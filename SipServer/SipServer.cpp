@@ -1,0 +1,908 @@
+#include "SipServer.h"
+#include "Log.h"
+#include <winsock2.h>
+//#include <ws2tcpip.h>
+//#include <iphlpapi.h>
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment(lib,"Iphlpapi.lib")
+#include <Windows.h>
+
+extern "C" {
+#include "HTTPDigest.h"
+}
+
+///////已含有功能：注册 注销 实时点播
+
+SipServer::SipServer()
+	: m_pSipCtx(nullptr)
+    , m_isRun(false)
+{
+}
+
+SipServer::~SipServer()
+{
+    m_mapClient.clear();
+}
+
+bool SipServer::Init(const ServerInfo& serverInfo)
+{
+	m_serverInfo = serverInfo;
+    m_pSipCtx = eXosip_malloc();
+    if (!m_pSipCtx) {
+        LOGE("eXosip_malloc error");
+        return false;
+    }
+    if (eXosip_init(m_pSipCtx) != OSIP_SUCCESS) {
+        LOGE("eXosip_init error");
+        return false;
+    }
+    /*
+    i = eXosip_listen_addr(ctx, IPPROTO_TCP, NULL, port, AF_INET, 0);  // TCP
+    i = eXosip_listen_addr(ctx, IPPROTO_UDP, NULL, port, AF_INET, 0);  // UDP
+    i = eXosip_listen_addr(ctx, IPPROTO_TCP, NULL, port, AF_INET, 1);  // TLS
+    i = eXosip_listen_addr(ctx, IPPROTO_UDP, NULL, port, AF_INET, 1);  // DTLS
+    */
+    if (eXosip_listen_addr(m_pSipCtx, IPPROTO_UDP, nullptr, m_serverInfo.iPort, AF_INET, 0)) {
+        LOGE("eXosip_listen_addr error");
+        return false;
+    }
+    eXosip_set_user_agent(m_pSipCtx, m_serverInfo.sUa.c_str());
+    if (eXosip_add_authentication_info(m_pSipCtx, m_serverInfo.sSipId.c_str(), m_serverInfo.sSipId.c_str()
+        , m_serverInfo.sSipPass.c_str(), NULL, m_serverInfo.sSipRealm.c_str())) {
+        LOGE("eXosip_add_authentication_info error");
+        return false;
+    }
+    LOGI("Server Listen");
+    m_isRun = true;
+	return true;
+}
+
+void SipServer::Loop()
+{
+    while (m_isRun) {
+        eXosip_event_t* pSipEvt = eXosip_event_wait(m_pSipCtx, 0, 20);
+        if (!pSipEvt) {
+            //eXosip_automatic_action(m_pSipCtx);
+            //osip_usleep(100000);// 100ms 的延时
+            continue;
+        }
+        //eXosip_automatic_action(m_pSipCtx);
+        this->SipEventHandle(pSipEvt);
+        eXosip_event_free(pSipEvt);
+    }
+}
+
+void SipServer::SipEventHandle(eXosip_event_t* pSipEvt)
+{
+#define FIRST_SHOW
+#ifdef FIRST_SHOW
+    LOGI("type:%d", pSipEvt->type);
+    this->DumpRequest(pSipEvt);
+    this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+
+    switch (pSipEvt->type)
+    {
+    case EXOSIP_REGISTRATION_SUCCESS:    // 注册成功事件：SIP客户端成功注册到服务器
+        // Method: REGISTER
+        // Type: Response
+        // Translate: 收到上级平台的 2xx 注册成功
+        break;
+
+    case EXOSIP_REGISTRATION_FAILURE:    // 注册失败事件：SIP客户端注册失败
+        // Method: REGISTER
+        // Type: Response
+        // Translate: 收到上级平台的 3456xx 注册失败
+        break;
+
+    case EXOSIP_CALL_INVITE:             // 收到INVITE请求：有新的呼叫请求
+        // Method: INVITE
+        // Type: Request
+        // Translate: 收到上级平台发送的 INVITE 请求
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        this->Response_INVITE(pSipEvt);
+        break;
+
+    case EXOSIP_CALL_REINVITE:           // 收到RE-INVITE请求：对现有呼叫的重新邀请
+        // Method: INVITE
+        // Type: Request
+        // Translate: GB28181 无多方通话，所以无此情况
+        break;
+
+    case EXOSIP_CALL_NOANSWER:           // 呼叫未被响应：对方未接听
+        // Method: NONE(INVITE)
+        // Type: Event
+        // Translate: 向下级平台发送的 INVITE 请求无响应
+        break;
+
+    case EXOSIP_CALL_PROCEEDING:         // 呼叫正在进行：对方已响应但尚未接听
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 1xx 响应
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        break;
+
+    case EXOSIP_CALL_RINGING:            // 呼叫正在振铃：对方已响应并正在振铃
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 1xx 响应
+        break;
+
+    case EXOSIP_CALL_ANSWERED: {           // 呼叫已接听：对方已响应并接听
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 2xx 响应
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        osip_message_t* pMsg = nullptr;
+        int iRet = eXosip_call_build_ack(m_pSipCtx, pSipEvt->did, &pMsg);
+        if (!iRet && pMsg) {
+            eXosip_call_send_ack(m_pSipCtx, pSipEvt->did, pMsg);
+        }
+        else {
+            LOGE("eXosip_call_send_ack error=%d", iRet);
+        }
+        break;
+    }
+    case EXOSIP_CALL_REDIRECTED:         // 呼叫被重定向：呼叫被转发到其他地址
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 3xx 响应
+        break;
+
+    case EXOSIP_CALL_REQUESTFAILURE:     // 呼叫请求失败：可能是由于网络问题或其他原因
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 4xx 响应
+        break;
+
+    case EXOSIP_CALL_SERVERFAILURE:      // 呼叫失败：服务器端出现问题
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 5xx 响应
+        break;
+
+    case EXOSIP_CALL_GLOBALFAILURE:      // 呼叫失败：全局性问题（如不可达）
+        // Method: INVITE
+        // Type: Response
+        // Translate: 向下级平台发送的 INVITE 请求 6xx 响应
+        break;
+
+    case EXOSIP_CALL_ACK:                // 收到ACK确认：对方已接听并确认
+        // Method: ACK
+        // Type: Request
+        // Translate: 收到下级平台发送的 ACK 请求
+        break;
+
+    case EXOSIP_CALL_CANCELLED:          // 呼叫被取消：可能是由主叫方发起
+        // Method: NONE
+        // Type: Event
+        // Translate: GB28181 无多方通话，所以无此情况
+        break;
+
+    case EXOSIP_CALL_MESSAGE_NEW:        // 收到新的消息
+        // Method: MESSAGE, BYE, ...
+        // Type: Request
+        // Translate: 收到上级发送的 MESSAGE 消息(会话中)
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        break;
+
+    case EXOSIP_CALL_MESSAGE_PROCEEDING: // 消息正在处理中
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 1xx 响应
+        break;
+
+    case EXOSIP_CALL_MESSAGE_ANSWERED:   // 消息已被响应
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 2xx 响应
+        break;
+
+    case EXOSIP_CALL_MESSAGE_REDIRECTED: // 消息被重定向
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 3xx 响应
+        break;
+
+    case EXOSIP_CALL_MESSAGE_REQUESTFAILURE: // 消息请求失败
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 4xx 响应
+        break;
+
+    case EXOSIP_CALL_MESSAGE_SERVERFAILURE: // 消息失败：服务器端问题
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 5xx 响应
+        break;
+
+    case EXOSIP_CALL_MESSAGE_GLOBALFAILURE: // 消息失败：全局性问题
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 6xx 响应
+        break;
+
+    case EXOSIP_CALL_CLOSED:             // 呼叫已关闭：可能是因为正常结束或超时
+        // Method: BYE
+        // Type: Request
+        // Translate: 收到上级或者下级发送的 BYE 请求
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        break;
+
+    case EXOSIP_CALL_RELEASED:           // 呼叫已释放：资源已清理
+        // Method: NONE
+        // Type: Event
+        // Translate: 会话释放
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        //这里释放所有Client资源，但理论上应该仅释放一个Client
+        m_mapClient.clear();
+        break;
+
+    case EXOSIP_MESSAGE_NEW:             // 收到新的SIP消息请求
+        // Method: MESSAGE, REGISTER, NOTIFY
+        // Type: Request
+        // Translate: 收到上级或者下级发送的 MESSAGE 消息
+        if (MSG_IS_REGISTER(pSipEvt->request)) {
+            this->Response_REGISTER(pSipEvt);
+        }
+        else if (MSG_IS_MESSAGE(pSipEvt->request)) {
+            this->Response_MESSAGE(pSipEvt);
+        }
+//#define MSG_IS_BYE(msg) (MSG_IS_REQUEST(msg) && 0 == strcmp((msg)->sip_method, "BYE"))
+        else if (strncmp(pSipEvt->request->sip_method, "BYE", 3) != 0) {
+            LOGE("unknown1");
+        }
+        else {
+            LOGE("unknown2");
+        }
+        break;
+
+    case EXOSIP_MESSAGE_PROCEEDING:      // 消息正在处理中，已发送响应但尚未完成
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 1xx 响应
+        break;
+
+    case EXOSIP_MESSAGE_ANSWERED:        // 消息已被成功响应（例如，对方已回复）
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 2xx 响应
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+#endif // FIRST_SHOW
+        break;
+
+    case EXOSIP_MESSAGE_REDIRECTED:      // 消息被重定向到其他地址或目标
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 3xx 响应
+        break;
+
+    case EXOSIP_MESSAGE_REQUESTFAILURE:  // 消息请求失败，可能是由于客户端错误（如4xx响应）
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 4xx 响应
+#ifndef FIRST_SHOW
+        this->DumpRequest(pSipEvt);
+        this->DumpResponse(pSipEvt);
+#endif // FIRST_SHOW
+        break;
+
+    case EXOSIP_MESSAGE_SERVERFAILURE:   // 消息处理失败，可能是由于服务器错误（如5xx响应）
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 5xx 响应
+        break;
+
+    case EXOSIP_MESSAGE_GLOBALFAILURE:   // 消息失败，全局性问题（如网络不可达，6xx响应）
+        // Method: MESSAGE
+        // Type: Response
+        // Translate: 向上级或者下级发送的 MESSAGE 请求 6xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_NOANSWER:   // 订阅请求未被响应
+        // Method: NONE(SUBSCRIPTION)
+        // Type: Event
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求无响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_PROCEEDING: // 订阅请求正在处理中
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 1xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_ANSWERED:   // 订阅请求已被响应
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 2xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_REDIRECTED: // 订阅请求被重定向
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 3xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_REQUESTFAILURE: // 订阅请求失败
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 4xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_SERVERFAILURE: // 订阅失败：服务器端问题
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 5xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_GLOBALFAILURE: // 订阅失败：全局性问题
+        // Method: SUBSCRIPTION
+        // Type: Response
+        // Translate: 向下级平台发送的 SUBSCRIBE/REFER 请求 6xx 响应
+        break;
+
+    case EXOSIP_SUBSCRIPTION_NOTIFY:     // 收到通知：订阅内容有更新
+        // Method: NOTIFY
+        // Type: Request
+        // Translate: 收到下级平台发送的 NOTIFY 请求
+        break;
+
+    case EXOSIP_IN_SUBSCRIPTION_NEW:     // 收到新的订阅请求
+        // Method: SUBSCRIBE
+        // Type: Request
+        // Translate: 收到上级平台发送的 SUBSCRIBE/REFER 请求
+        break;
+
+    case EXOSIP_NOTIFICATION_NOANSWER:   // 通知未被响应
+        // Method: NONE(NOTIFY)
+        // Type: Event
+        // Translate: 向上级平台发送的 Notify 请求无响应
+        break;
+
+    case EXOSIP_NOTIFICATION_PROCEEDING: // 通知正在处理中
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 1xx 响应
+        break;
+
+    case EXOSIP_NOTIFICATION_ANSWERED:   // 通知已被响应
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 2xx 响应
+        break;
+
+    case EXOSIP_NOTIFICATION_REDIRECTED: // 通知被重定向
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 3xx 响应
+        break;
+
+    case EXOSIP_NOTIFICATION_REQUESTFAILURE: // 通知请求失败
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 4xx 响应
+        break;
+
+    case EXOSIP_NOTIFICATION_SERVERFAILURE: // 通知失败：服务器端问题
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 5xx 响应
+        break;
+
+    case EXOSIP_NOTIFICATION_GLOBALFAILURE: // 通知失败：全局性问题
+        // Method: NOTIFY
+        // Type: Response
+        // Translate: 向上级平台发送的 Notify 请求 6xx 响应
+        break;
+
+    case EXOSIP_EVENT_COUNT:             // 事件总数：通常用于内部统计
+        // Method: NONE
+        // Type: None
+        // Translate: 事件最大值
+        break;
+
+    default:                             // 默认分支：处理未知事件类型
+        break;
+    }
+}
+
+void SipServer::DumpMessage(osip_message_t* pSipMsg)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipMsg, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\nprint message start\n%s\nprint message end\n", pMsg);
+    }
+}
+
+void SipServer::DumpRequest(eXosip_event_t* pSipEvt)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipEvt->request, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\nprint request start\ntype=%d\n%s\nprint request end\n", pSipEvt->type, pMsg);
+    }
+    //osip_free(pMsg);
+}
+
+void SipServer::DumpResponse(eXosip_event_t* pSipEvt)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipEvt->response, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\nprint response start\ntype=%d\n%s\nprint response end\n", pSipEvt->type, pMsg);
+    }
+    //osip_free(pMsg);
+}
+
+void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
+{
+    osip_authorization_t* pAuth = nullptr;
+    osip_message_get_authorization(pSipEvt->request, 0, &pAuth);
+
+    /*
+    * 摄像头向sip服务器进行注册的首要信息，若还未携带Authorization字段则需要返回401信息并携带服务器数据以告知设备我方信息
+    REGISTER sip:SIP服务器编码@目的域名或IP地址端口 SIP/2.0
+    Via: SIP/2.0/UDP 源域名或IP地址端口
+    From: <sip:SIP设备编码@源域名>;tag=185326220
+    To: <sip:SIP设备编码@源域名>
+    Call-ID: ms1214-322164710-681262131542511620107-0@172.18.16.3
+    CSeq: 1 REGISTER
+    Contact:<sip:SIP设备编码@源IP地址端口>
+    Max-Forwards:70
+    Expires:3600
+    Content-Length:0
+    */
+    //如果缺乏来源Authorization信息则进入注册/注销信息响应构建
+    if (nullptr == pAuth || nullptr == pAuth->username) {
+        Response_REGISTER_401unauthorized(pSipEvt);
+        return;
+    }
+
+    /*
+    * 如果有Authorization，则进行信息提取以校验
+    J.1.3 Registersip:SIP服务器编码@目的域名或IP地址端口 SIP/2.0
+    Via:SIP/2.0/UDP 源域名或IP地址端口
+    From:<sip:SIP设备编码@源域名>;tag=185326220
+    To:<sip:SIP设备编码@源域名>
+    Call-ID:ms1214-322164710-681262131542511620107-0@172.18.16.3
+    CSeq:2Register
+    Contact:<sip:SIP设备编码@源IP地址端口>
+    Authorization:Digestusername="64010000002020000001",realm="64010000",nonce="6fe9
+    ba44a76be22a",uri="sip:64010000002000000001@172.18.16.5:5060",response="9625d92d1bddea
+    7a911926e0db054968",algorithm=MD5
+    Max-Forwards:70
+    Expires:3600
+    Content-Length:0
+    */
+
+    char* method = NULL, // REGISTER
+        * algorithm = NULL, // MD5
+        * username = NULL,// 340200000013200000024 SIP用户名
+        * realm = NULL, // sip服务器传给客户端，客户端携带并提交上来的sip服务域
+        * nonce = NULL, // sip服务器传给客户端，客户端携带并提交上来的nonce
+        * nonce_count = NULL,
+        * uri = NULL, // sip:34020000002000000001@3402000000
+        * response = NULL, // 客户端计算生成的认证字符串
+        * cnonce = NULL, // 客户端生成的随机数
+        * message_qop = NULL; // sip:34020000002000000001@3402000000
+
+    method = pSipEvt->request->sip_method;
+
+#define SIP_strdup(FIELD) if (pAuth->FIELD) (FIELD) = osip_strdup_without_quote(pAuth->FIELD);//提取字符串并消除其中的双引号
+    SIP_strdup(algorithm)
+    SIP_strdup(username);
+    SIP_strdup(realm);
+    SIP_strdup(nonce);
+    SIP_strdup(nonce_count);
+    SIP_strdup(uri);
+    SIP_strdup(response);
+    SIP_strdup(cnonce);
+    SIP_strdup(message_qop);
+#undef SIP__strdup
+
+    //提取请求中的交互信息并hash
+    HASHHEX hashResponse = "";
+    {
+        //这里需要使用客户端的账号密码认证，所以一般情况是需要在sip协议以外在服务端注册登录的账号密码信息
+        HASHHEX hash1 = "", hash2 = "";
+        DigestCalcHA1(algorithm, username, realm, username, nonce, nonce_count, hash1);
+        DigestCalcResponse(hash1, nonce, nonce_count, cnonce, message_qop, 0, method, uri, hash2, hashResponse);
+        LOGI("hashCalc hash1=%s hash2=%s response=%s", hash1, hash2, hashResponse);
+    }
+
+    //提取主机端口用户名信息
+    osip_contact_t* pContact = nullptr;
+    osip_message_get_contact(pSipEvt->request, 0, &pContact);
+    //hash验证，验证交互信息一致性
+    if (0 == memcmp(hashResponse, response, HASHHEXLEN)) {//一致则注册/注销此用户
+
+        int iExpires = -1;
+        osip_header_t* stExpires = nullptr;
+        osip_message_get_expires(pSipEvt->request, 0, &stExpires);
+        //是注销
+        LOGI("Expires:%s,%s", stExpires->hname, stExpires->hvalue);
+        if (0 == atoi(stExpires->hvalue)) {
+            LOGI("Camera unregistration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
+            m_mapClient.erase(_strdup(username));
+            LOGI("Camera num:%llu", m_mapClient.size());
+            this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注销通过
+        }
+        else {
+            LOGI("Camera registration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
+            ClientInfo clientInfo{ _strdup(pContact->url->host), atoi(pContact->url->port), _strdup(username),false,0 };
+            m_mapClient.insert(std::make_pair(clientInfo.sDevice, clientInfo));
+            LOGI("Camera num:%llu", m_mapClient.size());
+            this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注册通过
+            //this->Request_INVITE(pstClientInfo);
+            //this->Request_MESSAGE(clientInfo);
+        }
+    }
+    else {//否则不予加入
+        LOGI("Camera registration error, ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
+        //this->MessageSendAnswer(pSipEvt, 401);//通知摄像头注册/注销失败
+    }
+
+    osip_free(algorithm);
+    osip_free(username);
+    osip_free(realm);
+    osip_free(nonce);
+    osip_free(nonce_count);
+    osip_free(uri);
+}
+
+void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
+{
+    /*
+    * 这里需要构建一个如下的消息体，其中需要携带回去的信息主要是：WWW-Authenticate:Digestrealm="64010000",nonce="6fe9ba44a76be22a"
+    J.1.2 SIP/2.0401Unauthorized
+    To:sip:SIP设备编码@源域名
+    Content-Length:0
+    CSeq:1Register
+    Call-ID:ms1214-322164710-681262131542511620107-0@172.18.16.3
+    From:<sip:SIP设备编码@源域名>;tag=185326220
+    Via:SIP/2.0/UDP源域名或IP地址端口
+    WWW-Authenticate:Digestrealm="64010000",nonce="6fe9ba44a76be22a"
+    */
+    char* pDest = nullptr;
+    osip_message_t* pMsg = nullptr;
+    osip_www_authenticate_t* pHeader = nullptr;
+    osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
+    osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
+    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sSipRealm.c_str()));//提供认证用的SIP服务器域
+    osip_www_authenticate_set_nonce(pHeader, osip_enquote(m_serverInfo.sNonce.c_str()));//提供认证用的SIP服务随机数值
+    osip_www_authenticate_set_algorithm(pHeader, osip_strdup("MD5"));
+    osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//这里要加双引号
+    osip_www_authenticate_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
+    int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//构建一个响应
+    if (OSIP_SUCCESS != iRet || !pMsg) {
+        LOGE("eXosip_message_build_answer failed:%d", iRet);
+    }
+
+    iRet = osip_message_set_www_authenticate(pMsg, pDest);//将响应头字符串添加到响应信息中
+    if (OSIP_SUCCESS != iRet) {
+        LOGE("osip_message_set_www_authenticate failed:%d", iRet);
+    }
+
+    iRet = osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置响应消息的内容类型
+    if (OSIP_SUCCESS != iRet) {
+        LOGE("osip_message_set_content_type failed:%d", iRet);
+    }
+
+    this->DumpMessage(pMsg);
+
+    eXosip_lock(m_pSipCtx);
+    iRet = eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, 401, pMsg);//发送响应
+    eXosip_unlock(m_pSipCtx);
+    if (OSIP_SUCCESS != iRet) {
+        LOGE("eXosip_message_send_answer failed:%d", iRet);
+    }
+    LOGI("response_register_401unauthorized success");
+
+    //回收资源
+    osip_www_authenticate_free(pHeader);
+    osip_free(pDest);
+}
+
+void SipServer::Response_MESSAGE(eXosip_event_t* pSipEvt)
+{
+    osip_body_t* pBody = nullptr;
+    char sCmdType[64] = { 0 };
+    char sDeviceID[64] = { 0 };
+    osip_message_get_body(pSipEvt->request, 0, &pBody);
+    if (pBody) {
+        parseXml(pBody->body, "<CmdType>", false, "</CmdType>", false, sCmdType);
+        parseXml(pBody->body, "<DeviceID>", false, "</DeviceID>", false, sDeviceID);
+    }
+
+    //    Client *client = getClientByDevice(DeviceID);
+    //    if(client){
+    //        LOGI("response_message：%s 已注册",DeviceID);
+    //    }else{
+    //        LOGE("response_message：%s 未注册",DeviceID);
+    //    }
+    LOGI("CmdType=%s,DeviceID=%s", sCmdType, sDeviceID);
+
+    if (0 == strcmp(sCmdType, "Keepalive")) {//这是一个保活的请求，正常的回应一个200就ok
+        this->MessageSendAnswer(pSipEvt, 200);
+    }
+    else if (0 == strcmp(sCmdType, "Catalog")) {//?
+        this->MessageSendAnswer(pSipEvt, 200);
+    }
+    else if (0 == strcmp(sCmdType, "Broadcast")) {//?
+        this->MessageSendAnswer(pSipEvt, 200);
+    }
+    else {//其余信息
+        this->MessageSendAnswer(pSipEvt, 200);
+    }
+}
+
+void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
+{
+    char sSessionExp[1024] = { 0 };
+    osip_message_t* pMsg = nullptr;
+    char sFrom[1024] = { 0 };
+    char sTo[1024] = { 0 };
+    char sContact[1024] = { 0 };
+    char sSdp[2048] = { 0 };
+    char sHead[1024] = { 0 };
+    std::string srcPort;
+    std::cin >> srcPort;
+    /*PCMA
+    v=0
+    o=34020000001320000022 2798 2798 IN IP4 172.16.19.236
+    s=Play
+    c=IN IP4 172.16.19.236
+    t=0 0
+    m=audio 15062 RTP/AVP 8 96
+    a=recvonly
+    a=rtpmap:8 PCMA/8000
+    a=rtpmap:96 PS/90000
+    y=0200000017
+    f=v/////a/1/8/1
+    */
+    sprintf_s(sSdp, 2048,
+        "v=0\r\n"
+        "o=%s 0 0 IN IP4 %s\r\n"
+        "s=Play\r\n"
+        "c=IN IP4 %s\r\n"
+        "t=0 0\r\n"
+        "m=audio %d RTP/AVP 8 96\r\n"// 104 96
+        "a=sendonly\r\n"
+        "a=rtpmap:8 PCMA/8000\r\n"//a=rtpmap:104 mpeg4-generic/16000
+        "a=rtpmap:96 PS/90000\r\n"
+        "y=0200000017\r\n"//a/-1/6/3
+        "f=v/////a/1/8/1\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/atoi(srcPort.c_str()));
+
+    int iRet = eXosip_call_build_answer(m_pSipCtx, pSipEvt->tid, 200, &pMsg);
+    if (iRet) {
+        LOGE("eXosip_call_build_answer error: %s %s ret:%d", sFrom, sTo, iRet);
+        return;
+    }
+    
+    osip_message_set_body(pMsg, sSdp, strlen(sSdp));
+    osip_message_set_content_type(pMsg, "application/sdp");
+
+    int iCallId = eXosip_call_send_answer(m_pSipCtx, pSipEvt->tid, 200, pMsg);
+
+    if (iCallId > 0) {
+        LOGI("eXosip_call_send_answer success: iCallId=%d", iCallId);
+    }
+    else {
+        LOGE("eXosip_call_send_answer error: iCallId=%d", iCallId);
+    }
+    
+}
+
+void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
+{
+    int iRet = 0;
+    osip_message_t* pMsg = nullptr;
+    iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, iStatus, &pMsg);
+    if (iRet == 0 && pMsg != nullptr)
+    {
+        eXosip_lock(m_pSipCtx);
+        eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, iStatus, pMsg);//发送响应
+        eXosip_unlock(m_pSipCtx);
+    }
+    else {
+        LOGE("MessageSendAnswer error iStatus=%d,iRet=%d,pMsg=%d", iStatus, iRet, pMsg != nullptr);
+    }
+}
+
+void SipServer::Request_INVITE(const ClientInfo& clientInfo)
+{
+    LOGI("INVITE");
+
+    char sSessionExp[1024] = { 0 };
+    osip_message_t* pMsg = nullptr;
+    char sFrom[1024] = { 0 };
+    char sTo[1024] = { 0 };
+    char sContact[1024] = { 0 };
+    char sSdp[2048] = { 0 };
+    char sHead[1024] = { 0 };
+
+
+    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流接收者设备编码 @源域名>; tag = e3719a0b
+    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流接收者设备编码@源IP地址端口>
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流发送者的信息(此处设备发送，故填设备信息
+    sprintf_s(sSdp, 2048,
+        "v=0\r\n"
+        "o=%s 0 0 IN IP4 %s\r\n"
+        "s=Play\r\n"
+        "c=IN IP4 %s\r\n"
+        "t=0 0\r\n"
+        "m=video %d TCP/RTP/AVP 96 98 97\r\n"
+        "a=recvonly\r\n"
+        "a=rtpmap:96 PS/90000\r\n"
+        "a=rtpmap:98 H264/90000\r\n"
+        "a=rtpmap:97 MPEG4/90000\r\n"
+        "a=setup:passive\r\n"
+        "a=connection:new\r\n"
+        "y=0100000001\r\n"
+        "f=\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iRtpPort);
+
+
+    //sprintf_s(sSdp, 2048,
+    //    "v=0\r\n"
+    //    "o=%s 0 0 IN IP4 %s\r\n"
+    //    "s=Play\r\n"
+    //    "c=IN IP4 %s\r\n"
+    //    "t=0 0\r\n"
+    //    "m=audio %d TCP/RTP/AVP 8\r\n"
+    //    "a=sendonly\r\n"
+    //    "a=rtpmap:8 PCMA/8000\r\n"
+    //    "a=setup:passive\r\n"
+    //    "a=connection:new\r\n"
+    //    "y=0100000001\r\n"
+    //    "f=v/////a/1/8/1\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/12095);
+
+    int iRet = eXosip_call_build_initial_invite(m_pSipCtx, &pMsg, sTo, sFrom, nullptr, nullptr);
+    if (iRet) {
+        LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
+        return;
+    }
+
+    osip_message_set_body(pMsg, sSdp, strlen(sSdp));
+    osip_message_set_content_type(pMsg, "application/sdp");
+    snprintf(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", m_serverInfo.iSipTimeout);
+    osip_message_set_header(pMsg, "Session-Expires", sSessionExp);
+    osip_message_set_supported(pMsg, "timer");
+
+    int iCallId = eXosip_call_send_initial_invite(m_pSipCtx, pMsg);
+
+    if (iCallId > 0) {
+        LOGI("eXosip_call_send_initial_invite success: iCallId=%d", iCallId);
+    }
+    else {
+        LOGE("eXosip_call_send_initial_invite error: iCallId=%d", iCallId);
+    }
+}
+
+void SipServer::Request_MESSAGE(const ClientInfo& clientInfo)
+{
+    LOGI("MESSAGE");
+
+    char sSessionExp[1024] = { 0 };
+    osip_message_t* pMsg = nullptr;
+    char sFrom[1024] = { 0 };
+    char sTo[1024] = { 0 };
+    char sContact[1024] = { 0 };
+    char sXml[2048] = { 0 };
+    char sHead[1024] = { 0 };
+
+
+    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流发送者设备编码 @源域名>; tag = e3719a0b
+    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流发送者设备编码@源IP地址端口>
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流接收者的信息(此处设备发送，故填设备信息
+
+    sprintf_s(sXml, 2048,
+        "<? xmlversion=\"1.0\" ?>\r\n"
+        "<Notify>\r\n"
+        "<CmdType>Broadcast</CmdType>\r\n"
+        "<SN>992</SN>\r\n"
+        "<SourceID>34020000002000000001</SourceID>\r\n"
+        "<TargetID>34020000001370000012</TargetID>\r\n"
+        //"<TargetID>34020000001370000001</TargetID>\r\n"
+        "</Notify>\r\n"
+    );
+
+
+    //sprintf_s(sSdp, 2048,
+    //    "v=0\r\n"
+    //    "o=%s 0 0 IN IP4 %s\r\n"
+    //    "s=Play\r\n"
+    //    "c=IN IP4 %s\r\n"
+    //    "t=0 0\r\n"
+    //    "m=audio %d TCP/RTP/AVP 8\r\n"
+    //    "a=sendonly\r\n"
+    //    "a=rtpmap:8 PCMA/8000\r\n"
+    //    "a=setup:passive\r\n"
+    //    "a=connection:new\r\n"
+    //    "y=0100000001\r\n"
+    //    "f=v/////a/1/8/1\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/12095);
+
+    
+    int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);
+    if (iRet) {
+        LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
+        return;
+    }
+    osip_message_set_body(pMsg, sXml, strlen(sXml));
+    osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置请求消息的内容类型
+
+    int iCallId = eXosip_message_send_request(m_pSipCtx, pMsg);
+
+    if (iCallId > 0) {
+        LOGI("eXosip_message_send_request success: iCallId=%d", iCallId);
+    }
+    else {
+        LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
+    }
+    /*
+    char* pDest = nullptr;
+    osip_message_t* pMsg = nullptr;
+    osip_www_authenticate_t* pHeader = nullptr;
+
+    osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
+    osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
+    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sSipRealm.c_str()));//提供认证用的SIP服务器域
+    osip_www_authenticate_set_nonce(pHeader, osip_enquote(m_serverInfo.sNonce.c_str()));//提供认证用的SIP服务随机数值
+    osip_www_authenticate_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
+    int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//构建一个响应
+    if (iRet == 0 && pMsg != nullptr) {
+        osip_message_set_www_authenticate(pMsg, pDest);//将响应头字符串添加到响应信息中
+        osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置响应消息的内容类型
+
+        this->DumpMessage(pMsg);
+
+        eXosip_lock(m_pSipCtx);
+        eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, 401, pMsg);//发送响应
+        eXosip_unlock(m_pSipCtx);
+        LOGI("response_register_401unauthorized success");
+    }
+    else {
+        LOGE("response_register_401unauthorized error");
+    }
+    */
+}
+
+bool SipServer::parseXml(const char* pData, const char* pSMark, bool isWithSMake, const char* pEMark, bool isWithEMake, char* pDest)
+{
+    const char* satrt = strstr(pData, pSMark);
+
+    if (satrt != NULL) {
+        const char* end = strstr(satrt, pEMark);
+
+        if (end != NULL) {
+            int s_pos = isWithSMake ? 0 : strlen(pSMark);
+            int e_pos = isWithEMake ? strlen(pEMark) : 0;
+
+            strncpy_s(pDest, 64, satrt + s_pos, (end + e_pos) - (satrt + s_pos));
+        }
+        return true;
+    }
+    return false;
+}
