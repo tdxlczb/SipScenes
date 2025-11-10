@@ -21,24 +21,9 @@
     <ClCompile Include="SipServer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="HTTPDigest.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="MD5.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SipServer.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Log.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="HTTPDigest.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="MD5.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

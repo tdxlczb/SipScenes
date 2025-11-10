@@ -1,11 +1,17 @@
 #include "SipClient.h"
-#include "Log.h"
 
 #include <winsock2.h>
+#include <Windows.h>
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Iphlpapi.lib")
+#pragma comment(lib, "Dnsapi.lib")
 
 extern "C" {
-#include "HTTPDigest.h"
+#include <eXosip2/eXosip.h>
 }
+
+#include "tools/http_digest.h"
+#include "tools/log.h"
 
 ///////已含有功能：注册 注销 实时点播
 
@@ -75,6 +81,10 @@ void SipClient::Register()
     Request_REGISTER();
 }
 
+void SipClient::Call(const std::string& dstUri)
+{
+
+}
 
 void SipClient::SipEventHandle(eXosip_event_t* pSipEvt)
 {
@@ -429,17 +439,31 @@ void SipClient::Request_REGISTER()
     snprintf(proxy, sizeof(proxy), "sip:%s", m_clientInfo.sRegUri.c_str());
     //snprintf(contact, sizeof(contact), "sip:%s:%d", server_ip, server_port);
 
+    eXosip_lock(m_pSipCtx);
     osip_message_t* pReg = NULL;
     int rid = eXosip_register_build_initial_register(m_pSipCtx, from, proxy, NULL, m_clientInfo.iSipExpiry, &pReg);
     if (rid < 0) {
+        eXosip_unlock(m_pSipCtx);
         LOGI("eXosip_register_build_initial_register fail:%d", rid);
         return;
     }
+
+    //// 设置扩展支持头部
+    //osip_message_set_supported(pReg, "100rel");
+    //osip_message_set_supported(pReg, "path");
+
+    // 设置Allow值（RFC 3261 示例方法）
+    const char* allow_val = "PRACK, INVITE, ACK, BYE, CANCEL, UPDATE, INFO, SUBSCRIBE, NOTIFY, REFER, MESSAGE, OPTIONS";
+    //"INVITE, ACK, OPTIONS, CANCEL, BYE, UPDATE, INFO, MESSAGE, NOTIFY, PRACK, REFER";
+    osip_message_set_allow(pReg, allow_val);
+
     int ret = eXosip_register_send_register(m_pSipCtx, rid, pReg);
     if (OSIP_SUCCESS != ret) {
+        eXosip_unlock(m_pSipCtx);
         LOGI("eXosip_register_send_register fail:%d", ret);
         return;
     }
+    eXosip_unlock(m_pSipCtx);
     LOGI(">>> initial REGISTER rid=%d", rid);
     m_rid = rid;
 }
@@ -465,37 +489,42 @@ void SipClient::Request_REGISTER_Authorization(osip_message_t* pResponse)
             return;
         }
 
-        std::string method = "REGISTER"; 
-        std::string username = m_clientInfo.sUser;
-        std::string realm = osip_strdup_without_quote(www->realm);
-        std::string nonce = osip_strdup_without_quote(www->nonce);
-        std::string uri = "sip:" + m_clientInfo.sRegUri;
-        std::string algorithm = "MD5";
-        std::string cnonce = "cnonce123456789";
-        std::string message_qop = "auth";
-        std::string nonce_count = "00000001";
-        std::string password = m_clientInfo.sPwd;
+        //注意字符串处理的方法，内部申请了内存，用完记得释放，避免内存泄露
+        const char* method = "REGISTER";
+        const char* username = m_clientInfo.sUser.c_str();
+        char* realm = osip_strdup_without_quote(www->realm);
+        char* nonce = osip_strdup_without_quote(www->nonce);
+        const char* uri = std::string("sip:" + m_clientInfo.sRegUri).c_str();
+        const char* algorithm = "MD5";
+        const char* cnonce = "cnonce123456789";
+        const char* message_qop = "auth";
+        const char* nonce_count = "00000001";
+        const char* password = m_clientInfo.sPwd.c_str();
+
         //提取请求中的交互信息并hash
         HASHHEX hashResponse = "";
         {
             HASHHEX hash1 = "", hash2 = "";
-            DigestCalcHA1(algorithm.c_str(), username.c_str(), realm.c_str(), password.c_str(), nonce.c_str(), nonce_count.c_str(), hash1);
-            DigestCalcResponse(hash1, nonce.c_str(), nonce_count.c_str(), cnonce.c_str(), message_qop.c_str(), 0, method.c_str(), uri.c_str(), hash2, hashResponse);
-            LOGI("hashCalc hash1=%s hash2=%s response=%s", hash1, hash2, hashResponse);
+            DigestCalcHA1(algorithm, username, realm, password, nonce, nonce_count, hash1);
+            DigestCalcResponse(hash1, nonce, nonce_count, cnonce, message_qop, 0, method, uri, hash2, hashResponse);
+            LOGI("hashCalc hash1=%s response=%s", hash1, hashResponse);
         }
 
         osip_authorization_t* pHeader = nullptr;
         osip_authorization_init(&pHeader);//构建Authorization响应头
         osip_authorization_set_auth_type(pHeader, osip_strdup("Digest"));
-        osip_authorization_set_username(pHeader, osip_enquote(username.c_str()));
-        osip_authorization_set_realm(pHeader, osip_enquote(realm.c_str()));
-        osip_authorization_set_nonce(pHeader, osip_enquote(nonce.c_str()));
-        osip_authorization_set_uri(pHeader, osip_enquote(uri.c_str()));
+        osip_authorization_set_username(pHeader, osip_enquote(username));
+        osip_authorization_set_realm(pHeader, osip_enquote(realm));
+        osip_authorization_set_nonce(pHeader, osip_enquote(nonce));
+        osip_authorization_set_uri(pHeader, osip_enquote(uri));
         osip_authorization_set_response(pHeader, osip_enquote(hashResponse));
-        osip_authorization_set_algorithm(pHeader, osip_strdup(algorithm.c_str()));
-        osip_authorization_set_cnonce(pHeader, osip_enquote(cnonce.c_str()));
-        osip_authorization_set_message_qop(pHeader, osip_strdup(message_qop.c_str()));
-        osip_authorization_set_nonce_count(pHeader, osip_strdup(nonce_count.c_str()));
+        osip_authorization_set_algorithm(pHeader, osip_strdup(algorithm));
+        osip_authorization_set_cnonce(pHeader, osip_enquote(cnonce));
+        osip_authorization_set_message_qop(pHeader, osip_strdup(message_qop));
+        osip_authorization_set_nonce_count(pHeader, osip_strdup(nonce_count));
+
+        osip_free(realm);
+        osip_free(nonce);
 
         char* pDest = nullptr;
         osip_authorization_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
@@ -511,4 +540,58 @@ void SipClient::Request_REGISTER_Authorization(osip_message_t* pResponse)
         }
         osip_authorization_free(pHeader);
     }
+}
+
+
+void SipClient::Request_INVITE(const std::string& dstUri)
+{
+    char session_exp[1024] = { 0 };
+    osip_message_t* msg = nullptr;
+    char from[1024] = { 0 };
+    char to[1024] = { 0 };
+    char contact[1024] = { 0 };
+    char sdp[2048] = { 0 };
+    char head[1024] = { 0 };
+
+
+    sprintf(from, "sip:%s@%s:%d", m_clientInfo.sUser.c_str(), m_clientInfo.sIp.c_str(), m_clientInfo.iPort);
+    sprintf(to, "sip:%s", dstUri);
+    snprintf(sdp, 2048,
+        "v=0\r\n"
+        "o=%s 0 0 IN IP4 %s\r\n"
+        "s=Play\r\n"
+        "c=IN IP4 %s\r\n"
+        "t=0 0\r\n"
+        "m=video %d TCP/RTP/AVP 96 98 97\r\n"
+        "a=recvonly\r\n"
+        "a=rtpmap:96 PS/90000\r\n"
+        "a=rtpmap:98 H264/90000\r\n"
+        "a=rtpmap:97 MPEG4/90000\r\n"
+        "a=setup:passive\r\n"
+        "a=connection:new\r\n"
+        "y=0100000001\r\n"
+        "f=\r\n", m_clientInfo.sUser.c_str(), m_clientInfo.sIp.c_str(), m_clientInfo.sIp.c_str(), m_clientInfo);
+
+    int ret = eXosip_call_build_initial_invite(mSipCtx, &msg, to, from, nullptr, nullptr);
+    if (ret) {
+        LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", from, to, ret);
+        return -1;
+    }
+
+    
+    osip_message_set_body(msg, sdp, strlen(sdp));
+    osip_message_set_content_type(msg, "application/sdp");
+    snprintf(session_exp, sizeof(session_exp) - 1, "%i;refresher=uac", mInfo->getTimeout());
+    osip_message_set_header(msg, "Session-Expires", session_exp);
+    osip_message_set_supported(msg, "timer");
+
+    int call_id = eXosip_call_send_initial_invite(mSipCtx, msg);
+
+    if (call_id > 0) {
+        LOGI("eXosip_call_send_initial_invite success: call_id=%d", call_id);
+    }
+    else {
+        LOGE("eXosip_call_send_initial_invite error: call_id=%d", call_id);
+    }
+    return ret;
 }

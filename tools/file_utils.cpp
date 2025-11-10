@@ -1,7 +1,4 @@
 #include "file_utils.h"
-
-#pragma once
-
 #include <iostream>
 #include <string>
 #include <vector>

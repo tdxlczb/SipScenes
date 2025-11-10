@@ -1,14 +1,12 @@
 ﻿// SIPServer.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 #include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iphlpapi.h>
-#pragma comment (lib, "Ws2_32.lib")
-#pragma comment(lib,"Iphlpapi.lib")
-#include <Windows.h>
 
+
+#include <thread>
 #include "SipServer.h"
-#include "Log.h"
+#include "tools/log.h"
+#include "tools/config.h"
 
 
 int main()
@@ -23,24 +21,48 @@ int main()
 
     ServerInfo serverInfo{
             "SipServer_Test",//服务器的名字
-            "1234567890123456",//SIP服务随机数值
+            "1234567890123456",//SIP服务随机字符串
             "172.16.19.108",//SIP服务IP
             5060,//SIP服务端口
-            "34020000001320000001",//SIP服务器ID
+            "34020000002000000001",//SIP服务器ID
             "3402000000",//SIP服务器域
-            "itc20232024",//SIP password
-            1800,//SIP timeout
-            3600,//SIP到期
-            10000//SIP-RTP服务端口
+            "12345678",//SIP password
     };
 
-    SipServer stSipServer;
-    if (false == stSipServer.Init(serverInfo)) {
+    SipServer server;
+    if (false == server.Init(serverInfo)) {
         WSACleanup();
         return -1;
     }
 
-    stSipServer.Loop();
+    std::thread th([&server]() {
+        while (true)
+        {
+            ClientInfo info{
+                "172.16.19.184",
+                5060,
+                "34020000001320000002",
+                false,
+                31396
+            };
+            std::string type;
+            std::cin >> type;
+            if (type == "1") {
+                server.RequestPushStream(info);
+            }
+            else if (type == "2") {
+                server.RequestStopStream(info);
+            }
+            else if (type == "exit") {
+                break;
+            }
+            Sleep(10);
+        }
+        });
+
+    server.Loop();
+
+    th.join();
 
     WSACleanup();
     return 0;

@@ -15,51 +15,42 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="http_digest.cpp">
+    <ClCompile Include="sdp.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="md5.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="config.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="file_utils.cpp">
+    <ClCompile Include="message_xml.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\3rd\tinyxml2\include\tinyxml2.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="time_utils.cpp">
+    <ClCompile Include="device.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="log.cpp">
+    <ClCompile Include="device_channel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="stream.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="http_digest.h">
+    <ClInclude Include="sdp.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="httplib.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="log.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="md5.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="file_utils.h">
+    <ClInclude Include="message_xml.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="time_utils.h">
+    <ClInclude Include="device.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="device_channel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="stream.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

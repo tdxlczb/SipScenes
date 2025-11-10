@@ -34,12 +34,14 @@ public:
     /// 事件处理循环
     /// </summary>
     void Loop();
-
     /// <summary>
     /// 注册
     /// </summary>
     void Register();
-
+    /// <summary>
+    /// 呼叫
+    /// </summary>
+    void Call(const std::string& dstUri);
 private:
     /// <summary>
     /// Sip事件处理
@@ -100,8 +102,8 @@ private:
     /// <summary>
     /// 发送请求：INVITE
     /// </summary>
-    /// <param name="clientInfo">发送的目的对象</param>
-    void Request_INVITE(const ClientInfo& clientInfo);
+    /// <param name="dstUri">发送的目标uri</param>
+    void Request_INVITE(const std::string& dstUri);
     /// <summary>
     /// 发送请求：MESSAGE
     /// </summary>

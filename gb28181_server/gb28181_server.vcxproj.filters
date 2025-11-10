@@ -15,51 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="http_digest.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="md5.cpp">
+    <ClCompile Include="sip_server.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="config.cpp">
+    <ClCompile Include="gb28181_server.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="file_utils.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd\tinyxml2\include\tinyxml2.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="time_utils.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="log.cpp">
+    <ClCompile Include="http_server.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="http_digest.h">
+    <ClInclude Include="sip_server.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="httplib.h">
+    <ClInclude Include="gb28181_server.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="log.h">
+    <ClInclude Include="http_server.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="md5.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="file_utils.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="time_utils.h">
+    <ClInclude Include="common_def.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

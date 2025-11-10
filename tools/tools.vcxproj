@@ -127,7 +127,9 @@
     <ClCompile Include="config.cpp" />
     <ClCompile Include="file_utils.cpp" />
     <ClCompile Include="http_digest.cpp" />
+    <ClCompile Include="log.cpp" />
     <ClCompile Include="md5.cpp" />
+    <ClCompile Include="time_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h" />
@@ -137,6 +139,7 @@
     <ClInclude Include="http_digest.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="md5.h" />
+    <ClInclude Include="time_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

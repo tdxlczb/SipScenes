@@ -1,0 +1,244 @@
+#include "http_server.h"
+
+#include "json/json.h"
+#include "tools/log.h"
+#include "tools/config.h"
+#include "gb28181_server.h"
+
+namespace {
+
+std::string dump_headers(const httplib::Headers& headers) {
+    std::string s;
+    char buf[BUFSIZ];
+
+    for (const auto& x : headers) {
+        snprintf(buf, sizeof(buf), "%s: %s\n", x.first.c_str(), x.second.c_str());
+        s += buf;
+    }
+
+    return s;
+}
+
+std::string dump_multipart_formdata(const httplib::MultipartFormData& form) {
+    std::string s;
+    char buf[BUFSIZ];
+
+    s += "--------------------------------\n";
+
+    for (const auto& x : form.fields) {
+        const auto& name = x.first;
+        const auto& field = x.second;
+
+        snprintf(buf, sizeof(buf), "name: %s\n", name.c_str());
+        s += buf;
+
+        snprintf(buf, sizeof(buf), "text length: %zu\n", field.content.size());
+        s += buf;
+
+        s += "----------------\n";
+    }
+
+    for (const auto& x : form.files) {
+        const auto& name = x.first;
+        const auto& file = x.second;
+
+        snprintf(buf, sizeof(buf), "name: %s\n", name.c_str());
+        s += buf;
+
+        snprintf(buf, sizeof(buf), "filename: %s\n", file.filename.c_str());
+        s += buf;
+
+        snprintf(buf, sizeof(buf), "content type: %s\n", file.content_type.c_str());
+        s += buf;
+
+        snprintf(buf, sizeof(buf), "text length: %zu\n", file.content.size());
+        s += buf;
+
+        s += "----------------\n";
+    }
+
+    return s;
+}
+
+std::string log(const httplib::Request& req, const httplib::Response& res) {
+    std::string s;
+    char buf[BUFSIZ];
+
+    s += "================================\n";
+
+    snprintf(buf, sizeof(buf), "%s %s %s", req.method.c_str(),
+        req.version.c_str(), req.path.c_str());
+    s += buf;
+
+    std::string query;
+    for (auto it = req.params.begin(); it != req.params.end(); ++it) {
+        const auto& x = *it;
+        snprintf(buf, sizeof(buf), "%c%s=%s",
+            (it == req.params.begin()) ? '?' : '&', x.first.c_str(),
+            x.second.c_str());
+        query += buf;
+    }
+    snprintf(buf, sizeof(buf), "%s\n", query.c_str());
+    s += buf;
+
+    s += dump_headers(req.headers);
+    s += dump_multipart_formdata(req.form);
+
+    s += "--------------------------------\n";
+
+    snprintf(buf, sizeof(buf), "%d\n", res.status);
+    s += buf;
+    s += dump_headers(res.headers);
+
+    return s;
+}
+
+}
+
+HttpServer::HttpServer()
+{
+}
+
+HttpServer::~HttpServer()
+{
+}
+
+bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& ip, int port)
+{
+    m_gbServer = gbServer;
+    //
+    m_server.Post("/openStream", [this](const httplib::Request& req, httplib::Response& res) {
+        //auto body = dump_headers(req.headers) + dump_multipart_formdata(req.form);
+        Json::Reader reader;
+        Json::Value root;
+        if (!reader.parse(req.body, root)) {
+            return;
+        }
+        StreamInfo info;
+        info.deviceId = root.get("deviceId", "").asString();
+        info.ip = root.get("ip", "").asString();
+        info.port = root.get("port", 0).asInt();
+        info.channelId = root.get("channelId", "").asString();
+        info.streamNumber = root.get("streamNumber", 0).asInt();
+        info.tcpMode = root.get("tcpMode", 0).asInt();
+        info.startTime = root.get("startTime", "").asString();
+        info.endTime = root.get("endTime", "").asString();
+        std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
+        int ret = -1;
+        if (shared) {
+            std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
+            ret = shared->OpenStream(info);
+            if (ret >= 0) {
+                Json::Value data;
+                std::string rtpIp = shared->GetConfig()->GetString("rtp_server", "ip");
+                data["rtsp"] = "rtsp://" + rtpIp + ":554/rtp/" + streamId;
+                Json::Value result;
+                result["code"] = 0;
+                result["msg"] = "success";
+                result["data"] = data;
+                res.set_content(result.toStyledString(), "text/plain");
+                return;
+            }
+        }
+        Json::Value result;
+        result["code"] = ret;
+        result["msg"] = "failed";
+        result["data"] = Json::ValueType::objectValue;
+        res.set_content(result.toStyledString(), "text/plain");
+        });
+
+    m_server.Post("/closeStream", [this](const httplib::Request& req, httplib::Response& res) {
+        Json::Reader reader;
+        Json::Value root;
+        if (!reader.parse(req.body, root)) {
+            return;
+        }
+        StreamInfo info;
+        info.deviceId = root.get("deviceId", "").asString();
+        info.ip = root.get("ip", "").asString();
+        info.port = root.get("port", 0).asInt();
+        info.channelId = root.get("channelId", "").asString();
+        info.streamNumber = root.get("streamNumber", 0).asInt();
+        info.tcpMode = root.get("tcpMode", 0).asInt();
+        std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
+        int ret = -1;
+        if (shared) {
+            ret = shared->CloseStream(info);
+            if (ret >= 0) {
+                Json::Value result;
+                result["code"] = 0;
+                result["msg"] = "success";
+                result["data"] = Json::ValueType::objectValue;
+                res.set_content(result.toStyledString(), "text/plain");
+                return;
+            }
+        }
+        Json::Value result;
+        result["code"] = ret;
+        result["msg"] = "failed";
+        result["data"] = Json::ValueType::objectValue;
+        res.set_content(result.toStyledString(), "text/plain");
+        });
+
+    m_server.Post("/controlStream", [this](const httplib::Request& req, httplib::Response& res) {
+        Json::Reader reader;
+        Json::Value root;
+        if (!reader.parse(req.body, root)) {
+            return;
+        }
+        StreamInfo info;
+        info.deviceId = root.get("deviceId", "").asString();
+        info.ip = root.get("ip", "").asString();
+        info.port = root.get("port", 0).asInt();
+        info.channelId = root.get("channelId", "").asString();
+        info.streamNumber = root.get("streamNumber", 0).asInt();
+        info.tcpMode = root.get("tcpMode", 0).asInt();
+
+        info.controlType = root.get("controlType", 0).asInt();
+        info.seekTime = root.get("seekTime", "").asInt64();
+        info.speed = root.get("speed", 1.0).asDouble();
+        std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
+        int ret = -1;
+        if (shared) {
+            ret = shared->ControlStream(info);
+            if (ret >= 0) {
+                Json::Value result;
+                result["code"] = 0;
+                result["msg"] = "success";
+                result["data"] = Json::ValueType::objectValue;
+                res.set_content(result.toStyledString(), "text/plain");
+                return;
+            }
+        }
+        Json::Value result;
+        result["code"] = ret;
+        result["msg"] = "failed";
+        result["data"] = Json::ValueType::objectValue;
+        res.set_content(result.toStyledString(), "text/plain");
+        });
+
+    m_server.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
+        const char* fmt = "<p>Error Status: <span style='color:red;'>%d</span></p>";
+        char buf[BUFSIZ];
+        snprintf(buf, sizeof(buf), fmt, res.status);
+        res.set_content(buf, "text/html");
+        });
+
+    m_server.set_logger(
+        [](const httplib::Request& req, const httplib::Response& res) {
+            std::string logstr = log(req, res);
+            LOGE("%s", logstr.c_str());
+        });
+
+    auto base_dir = "./";
+    if (!m_server.set_mount_point("/", base_dir)) {
+        LOGE("The specified base directory doesn't exist.");
+        return false;
+    }
+
+    if (m_server.listen(ip, port)) {
+        LOGE("http server init failed.");
+        return false;
+    }
+    return true;
+}

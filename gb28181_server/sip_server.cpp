@@ -1,12 +1,12 @@
-#include "SipServer.h"
+#include "sip_server.h"
 
 #include <winsock2.h>
 //#include <ws2tcpip.h>
 //#include <iphlpapi.h>
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment(lib,"Iphlpapi.lib")
+#pragma comment(lib,"Dnsapi.lib")
 #include <Windows.h>
-#pragma comment(lib, "Ws2_32.lib")
-#pragma comment(lib, "Iphlpapi.lib")
-#pragma comment(lib, "Dnsapi.lib")
 
 extern "C" {
 #include <eXosip2/eXosip.h>
@@ -16,7 +16,6 @@ extern "C" {
 #include "tools/http_digest.h"
 #include "tools/httplib.h"
 #include "tools/log.h"
-#include "gb28181/sdp.h"
 
 namespace {
 
@@ -28,6 +27,7 @@ static void make_nonce(char* nonce, int len)
 
 }
 
+
 ///////已含有功能：注册 注销 实时点播
 
 SipServer::SipServer()
@@ -38,8 +38,6 @@ SipServer::SipServer()
 
 SipServer::~SipServer()
 {
-    m_mapClient.clear();
-
     eXosip_quit(m_pSipCtx);
 }
 
@@ -78,9 +76,9 @@ bool SipServer::Init(const ServerInfo& serverInfo)
     //int use_rport = 1;
     //eXosip_set_option(m_pSipCtx, EXOSIP_OPT_USE_RPORT, (void*)&use_rport);
 
-    eXosip_set_user_agent(m_pSipCtx, m_serverInfo.sUa.c_str());
-    iRet = eXosip_add_authentication_info(m_pSipCtx, m_serverInfo.sSipId.c_str(), m_serverInfo.sSipId.c_str()
-        , m_serverInfo.sSipPass.c_str(), NULL, m_serverInfo.sSipRealm.c_str());
+    eXosip_set_user_agent(m_pSipCtx, kUserAgent.c_str());
+    iRet = eXosip_add_authentication_info(m_pSipCtx, m_serverInfo.sUser.c_str(), m_serverInfo.sUser.c_str()
+        , m_serverInfo.sPwd.c_str(), NULL, m_serverInfo.sRealm.c_str());
     if (OSIP_SUCCESS != iRet) {
         LOGE("eXosip_listen_addr failed:%d", iRet);
         return false;
@@ -102,57 +100,62 @@ void SipServer::Loop()
             osip_usleep(100000);// 100ms 的延时
             continue;
         }
-        this->SipEventHandle(pSipEvt);
+        this->EventHandle(pSipEvt);
         //释放事件资源
         eXosip_event_free(pSipEvt);
     }
 }
 
-void SipServer::RequestPushStream(const ClientInfo& clientInfo)
+int SipServer::Call(const std::string& callUid, const ClientInfo& clientInfo, const std::string& sdp)
 {
-    httplib::Client cli("localhost", 80);
-
-    char url[256] = "/index/api/openRtpServer?port=0&secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=34020000001180000002_34020000001320000005_3&tcp_mode=0";
-    //snprintf(url, sizeof(url), "/index/api/openRtpServer?port=0&secret=xZqp6Gi4W637Ns6WE2A0aiHUBeWeINah&stream_id=%s&tcp_mode=0", deviceId);
-    auto res = cli.Get(url);
-    if (!res) {
-        std::cout << "error code: " << res.error() << std::endl;
-        return;
-    }
-    std::cout << res->status << std::endl;
-    std::cout << res->get_header_value("Content-Type") << std::endl;
-    std::cout << res->body << std::endl;
-
-    if (res->status != 200) {
-        return;
+    auto iter = m_mapDialog.find(callUid);
+    if (iter != m_mapDialog.end()) {
+        Request_BYE(iter->second.exCallId, iter->second.exDialogId);
+        m_mapDialog.erase(callUid);
     }
 
-    Json::Reader reader;
-    Json::Value root;
-    if (!reader.parse(res->body, root)) {
-        return;
+    int iRet = Request_INVITE(clientInfo, sdp);
+    if (iRet > 0) {
+        DialogInfo dialogInfo;
+        dialogInfo.callUid = callUid;
+        dialogInfo.exCallId = iRet;
+        dialogInfo.clientInfo = clientInfo;
+        m_mapCall[iRet] = dialogInfo;
+        return 0;
     }
-
-    int code = root.get("code", -1).asInt();
-    int port = root.get("port", -1).asInt();
-    if (code == 0) {
-        ClientInfo newInfo = clientInfo;
-        newInfo.iRtpPort = port;
-        Request_INVITE(newInfo);
-    }
+    return -1;
 }
 
-void SipServer::RequestStopStream(const ClientInfo& clientInfo)
+int SipServer::Hangup(const std::string& callUid, const ClientInfo& clientInfo)
 {
-    Request_BYE(clientInfo);
+    //Request_BYE(clientInfo);
+    auto iter = m_mapDialog.find(callUid);
+    if (iter != m_mapDialog.end()) {
+        Request_BYE(iter->second.exCallId, iter->second.exDialogId);
+    }
+    return 0;
 }
 
-void SipServer::RequestCatalog(const ClientInfo& clientInfo)
+int SipServer::RequestMessage(const ClientInfo& clientInfo, const std::string& message)
 {
-
+    return Request_MESSAGE(clientInfo, message);
 }
 
-void SipServer::SipEventHandle(eXosip_event_t* pSipEvt)
+int SipServer::RequestNotify()
+{
+    return 0;
+}
+
+int SipServer::RequestInfo(const std::string& callUid, const std::string& body)
+{
+    auto iter = m_mapDialog.find(callUid);
+    if (iter != m_mapDialog.end()) {
+        Request_INFO(iter->second, body);
+    }
+    return 0;
+}
+
+void SipServer::EventHandle(eXosip_event_t* pSipEvt)
 {
     LOGI("received type:%d", pSipEvt->type);
     this->DumpRequest(pSipEvt);
@@ -262,6 +265,9 @@ void SipServer::SipEventHandle(eXosip_event_t* pSipEvt)
         // Method: MESSAGE
         // Type: Response
         // Translate: 向下级平台发送的 MESSAGE 请求(会话中) 2xx 响应
+        if (MSG_IS_BYE(pSipEvt->request)) {
+            this->Response_INVITE_BYE(pSipEvt);
+        }
         break;
 
     case EXOSIP_CALL_MESSAGE_REDIRECTED: // 消息被重定向
@@ -298,9 +304,6 @@ void SipServer::SipEventHandle(eXosip_event_t* pSipEvt)
         // Method: NONE
         // Type: Event
         // Translate: 会话释放
-
-        //这里释放所有Client资源，但理论上应该仅释放一个Client
-        m_mapClient.clear();
         break;
 
     case EXOSIP_MESSAGE_NEW:             // 收到新的SIP消息请求
@@ -557,7 +560,7 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     //提取请求中的交互信息并hash
     HASHHEX hashResponse = "";
     {
-        const char* password = m_serverInfo.sSipPass.c_str();
+        const char* password = m_serverInfo.sPwd.c_str();
         //这里需要使用客户端的账号密码认证，所以一般情况是需要在sip协议以外在服务端注册登录的账号密码信息
         HASHHEX hash1 = "", hash2 = "";
         DigestCalcHA1(algorithm, username, realm, password, nonce, nonce_count, hash1);
@@ -578,15 +581,15 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
         LOGI("Expires:%s,%s", stExpires->hname, stExpires->hvalue);
         if (0 == atoi(stExpires->hvalue)) {
             LOGI("Camera unregistration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            m_mapClient.erase(_strdup(username));
-            LOGI("Camera num:%llu", m_mapClient.size());
+            //m_mapClient.erase(_strdup(username));
+            //LOGI("Camera num:%llu", m_mapClient.size());
             this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注销通过
         }
         else {
             LOGI("Camera registration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            ClientInfo clientInfo{ _strdup(pContact->url->host), atoi(pContact->url->port), _strdup(username),false,0 };
-            m_mapClient.insert(std::make_pair(clientInfo.sDevice, clientInfo));
-            LOGI("Camera num:%llu", m_mapClient.size());
+            //ClientInfo clientInfo{ _strdup(username), _strdup(pContact->url->host), atoi(pContact->url->port), false };
+            //m_mapClient.insert(std::make_pair(clientInfo.sUser, clientInfo));
+            //LOGI("Camera num:%llu", m_mapClient.size());
             this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注册通过
             //this->Request_INVITE(pstClientInfo);
             //this->Request_MESSAGE(clientInfo);
@@ -621,13 +624,16 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
     Via:SIP/2.0/UDP源域名或IP地址端口
     WWW-Authenticate:Digestrealm="64010000",nonce="6fe9ba44a76be22a"
     */
+    char nonce[64] = {0};
+    make_nonce(nonce, sizeof(nonce));
+
     char* pDest = nullptr;
     osip_message_t* pMsg = nullptr;
     osip_www_authenticate_t* pHeader = nullptr;
     osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
     osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
-    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sSipRealm.c_str()));//提供认证用的SIP服务器域
-    osip_www_authenticate_set_nonce(pHeader, osip_enquote(m_serverInfo.sNonce.c_str()));//提供认证用的SIP服务随机数值
+    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sRealm.c_str()));//提供认证用的SIP服务器域
+    osip_www_authenticate_set_nonce(pHeader, osip_enquote(nonce));//提供认证用的SIP服务随机数值
     osip_www_authenticate_set_algorithm(pHeader, osip_strdup("MD5"));
     osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//这里要加双引号
     osip_www_authenticate_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
@@ -671,6 +677,13 @@ void SipServer::Response_MESSAGE(eXosip_event_t* pSipEvt)
         parseXml(pBody->body, "<CmdType>", false, "</CmdType>", false, sCmdType);
         parseXml(pBody->body, "<DeviceID>", false, "</DeviceID>", false, sDeviceID);
     }
+
+    //    Client *client = getClientByDevice(DeviceID);
+    //    if(client){
+    //        LOGI("response_message：%s 已注册",DeviceID);
+    //    }else{
+    //        LOGE("response_message：%s 未注册",DeviceID);
+    //    }
     LOGI("CmdType=%s,DeviceID=%s", sCmdType, sDeviceID);
 
     if (0 == strcmp(sCmdType, "Keepalive")) {//这是一个保活的请求，正常的回应一个200就ok
@@ -722,7 +735,7 @@ void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
         "a=rtpmap:8 PCMA/8000\r\n"//a=rtpmap:104 mpeg4-generic/16000
         "a=rtpmap:96 PS/90000\r\n"
         "y=0200000017\r\n"//a/-1/6/3
-        "f=v/////a/1/8/1\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/atoi(srcPort.c_str()));
+        "f=v/////a/1/8/1\r\n", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/atoi(srcPort.c_str()));
 
     int iRet = eXosip_call_build_answer(m_pSipCtx, pSipEvt->tid, 200, &pMsg);
     if (iRet) {
@@ -746,15 +759,33 @@ void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
 
 void SipServer::Response_INVITE_ACK(eXosip_event_t* pSipEvt)
 {
-    m_mapDialog[pSipEvt->cid].exDialogId = pSipEvt->did;
+    //此时收到INVITE的200回复说明会话建立成功
+    auto iter = m_mapCall.find(pSipEvt->cid);
+    if (iter == m_mapCall.end())
+        return;
+
     osip_message_t* pMsg = nullptr;
     int ret = eXosip_call_build_ack(m_pSipCtx, pSipEvt->did, &pMsg);
     if (!ret && pMsg) {
-        eXosip_call_send_ack(m_pSipCtx, pSipEvt->did, pMsg);
+        ret = eXosip_call_send_ack(m_pSipCtx, pSipEvt->did, pMsg);
+        if (ret >= 0) {
+            DialogInfo dlg = iter->second;
+            dlg.exDialogId = pSipEvt->did;
+            m_mapDialog.emplace(dlg.callUid, dlg);
+        }
     }
     else {
         LOGE("eXosip_call_send_ack error=%d", ret);
     }
+}
+
+void SipServer::Response_INVITE_BYE(eXosip_event_t* pSipEvt)
+{
+    auto iter = m_mapCall.find(pSipEvt->cid);
+    if (iter == m_mapCall.end())
+        return;
+    
+    m_mapDialog.erase(iter->second.callUid);
 }
 
 void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
@@ -773,78 +804,86 @@ void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
     }
 }
 
-void SipServer::Request_INVITE(const ClientInfo& clientInfo)
+int SipServer::Request_INVITE(const ClientInfo& clientInfo, const std::string& sdp)
 {
-    gb28181::SdpParam sdpParam;
-    sdpParam.id = m_serverInfo.sSipId;
-    sdpParam.ip = m_serverInfo.sIp;
-    sdpParam.port = clientInfo.iRtpPort;
-    std::string sSdp = gb28181::BuildInvateRequestSdp(sdpParam);
-
     char sSessionExp[1024] = { 0 };
+    osip_message_t* pMsg = nullptr;
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sSipId.c_str(), m_serverInfo.sSipRealm.c_str()); //<sip:媒体流接收者设备编码 @源域名>; tag = e3719a0b
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流发送者的信息(此处设备发送，故填设备信息
+    //char sSdp[2048] = { 0 };
+    char sHead[1024] = { 0 };
 
-    osip_message_t* pMsg = nullptr;
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str()); //<sip:媒体流接收者设备编码 @源域名>; tag = e3719a0b
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流发送者的信息(此处设备发送，故填设备信息
+    //sprintf_s(sSdp, 2048,
+    //    "v=0\r\n"
+    //    "o=%s 0 0 IN IP4 %s\r\n"
+    //    "s=Play\r\n"
+    //    "c=IN IP4 %s\r\n"
+    //    "t=0 0\r\n"
+    //    "m=video %d RTP/AVP 96 97 98 99\r\n"
+    //    "a=recvonly\r\n"
+    //    "a=rtpmap:96 PS/90000\r\n"
+    //    "a=rtpmap:97 MPEG4/90000\r\n"
+    //    "a=rtpmap:98 H264/90000\r\n"
+    //    "a=rtpmap:99 H265/90000\r\n"
+    //    "a=streamnumber:0\r\n"
+    //    "y=0200000000\r\n" , m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), clientInfo.iRtpPort);
+
     int iRet = eXosip_call_build_initial_invite(m_pSipCtx, &pMsg, sTo, sFrom, nullptr, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
-        return;
+        return -1;
     }
 
-    osip_message_set_body(pMsg, sSdp.c_str(), strlen(sSdp.c_str()));
+    osip_message_set_body(pMsg, sdp.c_str(), sdp.length());
+    //osip_message_set_body(pMsg, sSdp, strlen(sSdp));
     osip_message_set_content_type(pMsg, "application/sdp");
-    sprintf_s(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", kTimeout);
+    snprintf(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", kTimeout);
     osip_message_set_header(pMsg, "Session-Expires", sSessionExp);
-    osip_message_set_header(pMsg, "Allow", " INVITE, ACK, CANCEL, REGISTER, BYE, MESSAGE");
-    osip_message_set_header(pMsg, "Trace-ID", " 34012ac7ccd67218f3b39e23701542b9");
     osip_message_set_supported(pMsg, "timer");
 
     int iCallId = eXosip_call_send_initial_invite(m_pSipCtx, pMsg);
-
     if (iCallId > 0) {
         LOGI("eXosip_call_send_initial_invite success: iCallId=%d", iCallId);
-        m_mapDialog[iCallId] = DialogInfo{ iCallId,-1,clientInfo.sDevice };
     }
     else {
         LOGE("eXosip_call_send_initial_invite error: iCallId=%d", iCallId);
     }
+    return iCallId;
 }
 
-void SipServer::Request_BYE(const ClientInfo& clientInfo)
+int SipServer::Request_BYE(int cid, int did)
 {
-    //for (auto iter = m_mapDialog.begin(); iter != m_mapDialog.end(); iter++)
-    //{
-    //    if (iter->second.device == clientInfo.sDevice) {
-    //        eXosip_lock(m_pSipCtx);
-    //        int ret = eXosip_call_terminate(m_pSipCtx, iter->second.exCallId, iter->second.exDialogId);
-    //        eXosip_unlock(m_pSipCtx);
-    //    }
-    //}
-    //return;
+    eXosip_lock(m_pSipCtx);
+    int iRet = eXosip_call_terminate(m_pSipCtx, cid, did);
+    eXosip_unlock(m_pSipCtx);
+    return iRet;
+}
+
+int SipServer::Request_BYE(const ClientInfo& clientInfo)
+{
     osip_message_t* pMsg = nullptr;
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
     char sContact[1024] = { 0 };
-    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sSipId.c_str(), m_serverInfo.sSipRealm.c_str());
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
+
+    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sRealm.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "BYE", sTo, sFrom, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
-        return;
+        return -1;
     }
 
     osip_message_set_contact(pMsg, sContact);
     
-    char sBranch[1024] = "z9hG4bK3206727754";
-    char sCallId[1024] = "779596542";
-    char sCSeq[1024] = { 0 };
-    char sFromTag[1024] = "1611904400";
-    char sToTag[1024] = "1075457766";
-
+    char sBranch[1024] = "z9hG4bK1147033244";
+    char sCallId[1024] = "1040150870";
+    char sCSeq[1024] = "21";
+    char sFromTag[1024] = "3691124318";
+    char sToTag[1024] = "1356799397";
 
     //osip_call_id_free(pMsg->call_id);
     //pMsg->call_id = NULL;
@@ -862,7 +901,7 @@ void SipServer::Request_BYE(const ClientInfo& clientInfo)
     osip_free(pMsg->cseq->number);
 
     osip_call_id_set_number(pMsg->call_id, osip_strdup(sCallId));
-    osip_cseq_set_number(pMsg->cseq, osip_strdup("21"));
+    osip_cseq_set_number(pMsg->cseq, osip_strdup(sCSeq));
 
     osip_via_t* via = NULL;
     osip_message_get_via(pMsg, 0, &via);
@@ -887,13 +926,12 @@ void SipServer::Request_BYE(const ClientInfo& clientInfo)
     else {
         LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
     }
-
+    return iCallId;
 }
 
-void SipServer::Request_MESSAGE(const ClientInfo& clientInfo)
+int SipServer::Request_MESSAGE(const ClientInfo& clientInfo, const std::string& message)
 {
     LOGI("MESSAGE");
-
     char sSessionExp[1024] = { 0 };
     osip_message_t* pMsg = nullptr;
     char sFrom[1024] = { 0 };
@@ -902,10 +940,9 @@ void SipServer::Request_MESSAGE(const ClientInfo& clientInfo)
     char sXml[2048] = { 0 };
     char sHead[1024] = { 0 };
 
-
-    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流发送者设备编码 @源域名>; tag = e3719a0b
-    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流发送者设备编码@源IP地址端口>
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流接收者的信息(此处设备发送，故填设备信息
+    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流发送者设备编码 @源域名>; tag = e3719a0b
+    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流发送者设备编码@源IP地址端口>
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流接收者的信息(此处设备发送，故填设备信息
 
     sprintf_s(sXml, 2048,
         "<? xmlversion=\"1.0\" ?>\r\n"
@@ -918,26 +955,10 @@ void SipServer::Request_MESSAGE(const ClientInfo& clientInfo)
         "</Notify>\r\n"
     );
 
-
-    //sprintf_s(sSdp, 2048,
-    //    "v=0\r\n"
-    //    "o=%s 0 0 IN IP4 %s\r\n"
-    //    "s=Play\r\n"
-    //    "c=IN IP4 %s\r\n"
-    //    "t=0 0\r\n"
-    //    "m=audio %d TCP/RTP/AVP 8\r\n"
-    //    "a=sendonly\r\n"
-    //    "a=rtpmap:8 PCMA/8000\r\n"
-    //    "a=setup:passive\r\n"
-    //    "a=connection:new\r\n"
-    //    "y=0100000001\r\n"
-    //    "f=v/////a/1/8/1\r\n", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/12095);
-
-    
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
-        return;
+        return -1;
     }
     osip_message_set_body(pMsg, sXml, strlen(sXml));
     osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置请求消息的内容类型
@@ -950,93 +971,28 @@ void SipServer::Request_MESSAGE(const ClientInfo& clientInfo)
     else {
         LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
     }
-    /*
-    char* pDest = nullptr;
-    osip_message_t* pMsg = nullptr;
-    osip_www_authenticate_t* pHeader = nullptr;
-
-    osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
-    osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
-    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sSipRealm.c_str()));//提供认证用的SIP服务器域
-    osip_www_authenticate_set_nonce(pHeader, osip_enquote(m_serverInfo.sNonce.c_str()));//提供认证用的SIP服务随机数值
-    osip_www_authenticate_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
-    int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//构建一个响应
-    if (iRet == 0 && pMsg != nullptr) {
-        osip_message_set_www_authenticate(pMsg, pDest);//将响应头字符串添加到响应信息中
-        osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置响应消息的内容类型
-
-        this->DumpMessage(pMsg);
-
-        eXosip_lock(m_pSipCtx);
-        eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, 401, pMsg);//发送响应
-        eXosip_unlock(m_pSipCtx);
-        LOGI("response_register_401unauthorized success");
-    }
-    else {
-        LOGE("response_register_401unauthorized error");
-    }
-    */
+    return iCallId;
 }
 
-void SipServer::Request_MESSAGE_Catalog(const ClientInfo& clientInfo)
+int SipServer::Request_NOTIFY(const ClientInfo& clientInfo, const std::string& message)
 {
-    char sSessionExp[1024] = { 0 };
-    osip_message_t* pMsg = nullptr;
-    char sFrom[1024] = { 0 };
-    char sTo[1024] = { 0 };
-    char sContact[1024] = { 0 };
-    char sXml[2048] = { 0 };
-    char sHead[1024] = { 0 };
+    return 0;
+}
 
-
-    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流发送者设备编码 @源域名>; tag = e3719a0b
-    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流发送者设备编码@源IP地址端口>
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流接收者的信息(此处设备发送，故填设备信息
-
-    sprintf_s(sXml, 2048,
-        "<? xmlversion=\"1.0\" ?>\r\n"
-        "<Notify>\r\n"
-        "<CmdType>Broadcast</CmdType>\r\n"
-        "<SN>992</SN>\r\n"
-        "<SourceID>34020000002000000001</SourceID>\r\n"
-        "<TargetID>34020000001370000012</TargetID>\r\n"
-        //"<TargetID>34020000001370000001</TargetID>\r\n"
-        "</Notify>\r\n"
-    );
-
-    /*
-<?xml version="1.0" encoding="GB2312"?>
-<Query>
-  <CmdType>Catalog</CmdType>
-  <SN>553891</SN>
-  <DeviceID>34020000001180000002</DeviceID>
-</Query>
-    */
-
-    //osip_message_t* pMsg = nullptr;
-    //char sFrom[1024] = { 0 };
-    //char sTo[1024] = { 0 };
-    //char sContact[1024] = { 0 };
-    //sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sSipId.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);
-    //sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sSipId.c_str(), m_serverInfo.sSipRealm.c_str());
-    //sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sDevice.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
-
-    int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);
-    if (iRet) {
-        LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
-        return;
+int SipServer::Request_INFO(const DialogInfo& dlgInfo, const std::string& body)
+{
+    osip_message_t* info = nullptr;
+    int ret = eXosip_call_build_info(m_pSipCtx, dlgInfo.exDialogId, &info);
+    if (ret != 0) {
+        LOGE("eXosip_call_build_info error: ret=%d", ret);
+        return -1;
     }
-    osip_message_set_body(pMsg, sXml, strlen(sXml));
-    osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置请求消息的内容类型
 
-    int iCallId = eXosip_message_send_request(m_pSipCtx, pMsg);
-
-    if (iCallId > 0) {
-        LOGI("eXosip_message_send_request success: iCallId=%d", iCallId);
-    }
-    else {
-        LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
-    }
+    osip_message_set_content_type(info, "APPLICATION/MANSRTSP");
+    osip_message_set_body(info, body.c_str(), body.length());
+    ret = eXosip_call_send_request(m_pSipCtx, dlgInfo.exDialogId, info);
+    LOGE("eXosip_call_send_request: ret=%d", ret);
+    return ret;
 }
 
 bool SipServer::parseXml(const char* pData, const char* pSMark, bool isWithSMake, const char* pEMark, bool isWithEMake, char* pDest)

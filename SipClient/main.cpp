@@ -17,7 +17,7 @@
 
 #include <thread>
 #include "SipClient.h"
-#include "Log.h"
+#include "tools/log.h"
 
 int main()
 {
@@ -51,6 +51,9 @@ int main()
             std::cin >> type;
             if (type == "1") {
                 client.Register();
+            }
+            else if (type == "2") {
+                //client.();
             }
             else if (type == "exit") {
                 break;
