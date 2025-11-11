@@ -4,7 +4,7 @@
 
 // 秒级时间戳转字符串
 std::string TimeUtils::secondsToString(time_t timestamp, const std::string& format) {
-    tm localTime;
+    std::tm localTime;
     localtime_s(&localTime, &timestamp);
     std::ostringstream oss;
     oss << std::put_time(&localTime, format.c_str());
@@ -16,7 +16,7 @@ std::string TimeUtils::millisecondsToString(long long milliseconds, const std::s
     time_t seconds = milliseconds / 1000;
     long long ms = milliseconds % 1000;
 
-    tm localTime;
+    std::tm localTime;
     localtime_s(&localTime, &seconds);
     std::ostringstream oss;
     oss << std::put_time(&localTime, format.c_str());
@@ -64,6 +64,16 @@ long long TimeUtils::stringToMilliseconds(const std::string& timeStr, const std:
 
     // 组合秒和毫秒
     return static_cast<long long>(seconds) * 1000 + milliseconds;
+}
+
+std::string TimeUtils::secondsChangeFormat(const std::string& timeStr, const std::string& srcFormat, const std::string& dstFormat)
+{
+    std::tm tm = {};
+    std::istringstream iss(timeStr);
+    iss >> std::get_time(&tm, srcFormat.c_str());
+    std::ostringstream oss;
+    oss << std::put_time(&tm, dstFormat.c_str());
+    return oss.str();
 }
 
 // 获取当前时间戳（秒）

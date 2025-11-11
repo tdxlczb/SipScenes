@@ -3,6 +3,7 @@
 
 struct StreamInfo
 {
+    std::string streamId;
     std::string deviceId;
     std::string ip;
     int port = 0;

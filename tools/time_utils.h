@@ -22,6 +22,8 @@ public:
     // 字符串转时间戳（毫秒秒）
     static long long stringToMilliseconds(const std::string& timeStr, const std::string& format = "%Y-%m-%d %H:%M:%S");
 
+    static std::string secondsChangeFormat(const std::string& timeStr, const std::string& srcFormat, const std::string& dstFormat);
+
     // 获取当前时间戳（秒）
     static time_t currentSeconds();
 

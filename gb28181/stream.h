@@ -30,6 +30,7 @@ struct Stream
 	SSRCInfo ssrc;
 };
 
+//外购nvr设备暂停1分钟之后就恢复不了，设备不支持长时间暂停
 std::string BuildPlayPauseCmd(int cseq);
 std::string BuildPlayResumeCmd(int cseq);
 std::string BuildPlaySeekCmd(int cseq, int64_t seekTime);

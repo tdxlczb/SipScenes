@@ -109,69 +109,31 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
     //
     m_server.Post("/openStream", [this](const httplib::Request& req, httplib::Response& res) {
         //auto body = dump_headers(req.headers) + dump_multipart_formdata(req.form);
-        Json::Reader reader;
-        Json::Value root;
-        if (!reader.parse(req.body, root)) {
-            return;
-        }
-        StreamInfo info;
-        info.deviceId = root.get("deviceId", "").asString();
-        info.ip = root.get("ip", "").asString();
-        info.port = root.get("port", 0).asInt();
-        info.channelId = root.get("channelId", "").asString();
-        info.streamNumber = root.get("streamNumber", 0).asInt();
-        info.tcpMode = root.get("tcpMode", 0).asInt();
-        info.startTime = root.get("startTime", "").asString();
-        info.endTime = root.get("endTime", "").asString();
+        StreamInfo info = GetStreamInfo(req.body);
         std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
         int ret = -1;
+        Json::Value data = Json::ValueType::objectValue;
         if (shared) {
-            std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
             ret = shared->OpenStream(info);
             if (ret >= 0) {
-                Json::Value data;
+                std::string streamId = shared->CreateStreamId(info);
                 std::string rtpIp = shared->GetConfig()->GetString("rtp_server", "ip");
                 data["rtsp"] = "rtsp://" + rtpIp + ":554/rtp/" + streamId;
-                Json::Value result;
-                result["code"] = 0;
-                result["msg"] = "success";
-                result["data"] = data;
-                res.set_content(result.toStyledString(), "text/plain");
-                return;
             }
         }
         Json::Value result;
         result["code"] = ret;
-        result["msg"] = "failed";
-        result["data"] = Json::ValueType::objectValue;
+        result["msg"] = "";
+        result["data"] = data;
         res.set_content(result.toStyledString(), "text/plain");
         });
 
     m_server.Post("/closeStream", [this](const httplib::Request& req, httplib::Response& res) {
-        Json::Reader reader;
-        Json::Value root;
-        if (!reader.parse(req.body, root)) {
-            return;
-        }
-        StreamInfo info;
-        info.deviceId = root.get("deviceId", "").asString();
-        info.ip = root.get("ip", "").asString();
-        info.port = root.get("port", 0).asInt();
-        info.channelId = root.get("channelId", "").asString();
-        info.streamNumber = root.get("streamNumber", 0).asInt();
-        info.tcpMode = root.get("tcpMode", 0).asInt();
+        StreamInfo info = GetStreamInfo(req.body);
         std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
         int ret = -1;
         if (shared) {
             ret = shared->CloseStream(info);
-            if (ret >= 0) {
-                Json::Value result;
-                result["code"] = 0;
-                result["msg"] = "success";
-                result["data"] = Json::ValueType::objectValue;
-                res.set_content(result.toStyledString(), "text/plain");
-                return;
-            }
         }
         Json::Value result;
         result["code"] = ret;
@@ -181,38 +143,15 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         });
 
     m_server.Post("/controlStream", [this](const httplib::Request& req, httplib::Response& res) {
-        Json::Reader reader;
-        Json::Value root;
-        if (!reader.parse(req.body, root)) {
-            return;
-        }
-        StreamInfo info;
-        info.deviceId = root.get("deviceId", "").asString();
-        info.ip = root.get("ip", "").asString();
-        info.port = root.get("port", 0).asInt();
-        info.channelId = root.get("channelId", "").asString();
-        info.streamNumber = root.get("streamNumber", 0).asInt();
-        info.tcpMode = root.get("tcpMode", 0).asInt();
-
-        info.controlType = root.get("controlType", 0).asInt();
-        info.seekTime = root.get("seekTime", "").asInt64();
-        info.speed = root.get("speed", 1.0).asDouble();
+        StreamInfo info = GetStreamInfo(req.body);
         std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
         int ret = -1;
         if (shared) {
             ret = shared->ControlStream(info);
-            if (ret >= 0) {
-                Json::Value result;
-                result["code"] = 0;
-                result["msg"] = "success";
-                result["data"] = Json::ValueType::objectValue;
-                res.set_content(result.toStyledString(), "text/plain");
-                return;
-            }
         }
         Json::Value result;
         result["code"] = ret;
-        result["msg"] = "failed";
+        result["msg"] = "";
         result["data"] = Json::ValueType::objectValue;
         res.set_content(result.toStyledString(), "text/plain");
         });
@@ -241,4 +180,28 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         return false;
     }
     return true;
+}
+
+StreamInfo HttpServer::GetStreamInfo(const std::string& body)
+{
+    StreamInfo info;
+    Json::Reader reader;
+    Json::Value root;
+    if (!reader.parse(body, root)) {
+        return info;
+    }
+    info.streamId = root.get("streamId", "").asString();
+    info.deviceId = root.get("deviceId", "").asString();
+    info.ip = root.get("ip", "").asString();
+    info.port = root.get("port", 0).asInt();
+    info.channelId = root.get("channelId", "").asString();
+    info.streamNumber = root.get("streamNumber", 0).asInt();
+    info.tcpMode = root.get("tcpMode", 0).asInt();
+    info.startTime = root.get("startTime", "").asString();
+    info.endTime = root.get("endTime", "").asString();
+
+    info.controlType = root.get("controlType", 0).asInt();
+    info.seekTime = root.get("seekTime", 0).asInt64();
+    info.speed = root.get("speed", 1.0).asDouble();
+    return info;
 }

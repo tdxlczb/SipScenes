@@ -20,9 +20,14 @@ public:
     int ControlStream(const StreamInfo& info);
 
     std::shared_ptr<Config> GetConfig();
+    std::string CreateStreamId(const StreamInfo& info);
 private:
-    int  OpenRtpServer(const std::string& streamId, int port, int tcpMode);
+    int OpenRtpServer(const std::string& streamId, int rtpPort, int tcpMode);
+    int PauseRtpCheck(const std::string& streamId);
+    int ResumeRtpCheck(const std::string& streamId);
+    std::string CreateSSRC(bool isHistory, const std::string& realm);
     void Catalog();
+
 private:
     std::shared_ptr<GB28181Server> GetSharedThis();
     std::weak_ptr<GB28181Server> GetWeakThis();
@@ -33,7 +38,8 @@ private:
     std::shared_ptr<Config> m_config;
     std::shared_ptr<HttpServer> m_httpServer;
     std::shared_ptr<SipServer> m_sipServer;
-
     std::thread  m_sipThread;
+
+    int m_streamSeq = 0;
 };
 

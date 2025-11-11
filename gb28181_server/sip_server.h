@@ -37,6 +37,13 @@ struct DialogInfo
     ClientInfo clientInfo;
 };
 
+//invite的信息
+struct InviteOptions
+{
+    std::string subject;
+    std::string sdp;
+};
+
 class SipServer
 {
 public:
@@ -47,7 +54,7 @@ public:
     // 事件处理循环
     void Loop();
     // 请求通话
-    int Call(const std::string& callUid, const ClientInfo& clientInfo, const std::string& sdp);
+    int Call(const std::string& callUid, const ClientInfo& clientInfo, const InviteOptions& options);
     // 停止通话
     int Hangup(const std::string& callUid, const ClientInfo& clientInfo);
     // 发送MESSAGE消息
@@ -101,7 +108,7 @@ public:
     /// 发送请求：INVITE
     /// </summary>
     /// <param name="clientInfo">发送的目的对象</param>
-    int Request_INVITE(const ClientInfo& clientInfo, const std::string& sdp);
+    int Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options);
     /// <summary>
     /// 发送请求：BYE
     /// </summary>

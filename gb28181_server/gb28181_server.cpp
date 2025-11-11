@@ -41,15 +41,19 @@ bool GB28181Server::Start()
 
 int GB28181Server::OpenStream(const StreamInfo& info)
 {
+    std::string streamId = CreateStreamId(info);
     std::string rtpIp = m_config->GetString("rtp_server", "ip");
     int rtpPort = m_config->GetInt("rtp_server", "port");
-    std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
     rtpPort = OpenRtpServer(streamId, rtpPort, info.tcpMode);
     if (rtpPort <= 0) {
         return -1;
     }
+    std::string sipUser = m_config->GetString("sip_server", "user");
+    std::string sipRealm = m_config->GetString("sip_server", "realm");
+
     gb28181::SdpParam sdpParam;
-    sdpParam.id = info.deviceId;
+    sdpParam.deviceId = sipUser;
+    sdpParam.channelId = info.channelId;
     sdpParam.ip = rtpIp;
     sdpParam.port = rtpPort;
     sdpParam.mode = info.tcpMode;
@@ -57,25 +61,27 @@ int GB28181Server::OpenStream(const StreamInfo& info)
         sdpParam.type = gb28181::kTransPlayBack;
         sdpParam.start = TimeUtils::stringToSeconds(info.startTime);
         sdpParam.end = TimeUtils::stringToSeconds(info.endTime);
-        sdpParam.ssrc = "1200000002";
+        sdpParam.ssrc = CreateSSRC(true, sipRealm);
     }
     else {
         sdpParam.type = gb28181::kTransPlay;
-        sdpParam.ssrc = "0200000001";
+        sdpParam.ssrc = CreateSSRC(false, sipRealm);
     }
     sdpParam.streamnumber = info.streamNumber;
-    std::string sdp = gb28181::BuildInvateRequestSdp(sdpParam);
 
     ClientInfo clientInfo;
     clientInfo.sUser = info.channelId;
     clientInfo.sIp = info.ip;
     clientInfo.iPort = info.port;
-    return m_sipServer->Call(streamId, clientInfo, sdp);
+    InviteOptions options;
+    options.sdp = gb28181::BuildInvateRequestSdp(sdpParam);
+    options.subject = info.channelId + ":" + sdpParam.ssrc + "," + sipUser + ":0";
+    return m_sipServer->Call(streamId, clientInfo, options);
 }
 
 int GB28181Server::CloseStream(const StreamInfo& info)
 {
-    std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
+    std::string streamId = CreateStreamId(info);
     ClientInfo clientInfo;
     clientInfo.sUser = info.channelId;
     clientInfo.sIp = info.ip;
@@ -85,14 +91,16 @@ int GB28181Server::CloseStream(const StreamInfo& info)
 
 int GB28181Server::ControlStream(const StreamInfo& info)
 {
-    std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
+    std::string streamId = CreateStreamId(info);
     int cseq = static_cast<int>((rand() % 9 + 1) * pow(10, 8));
     std::string body;
     if (info.controlType == 1) {
         body = gb28181::BuildPlayPauseCmd(cseq);
+        PauseRtpCheck(streamId);
     }
     else if (info.controlType == 2) {
         body = gb28181::BuildPlayResumeCmd(cseq);
+        ResumeRtpCheck(streamId);
     }
     else if (info.controlType == 3) {
         body = gb28181::BuildPlaySeekCmd(cseq, info.seekTime);
@@ -111,12 +119,26 @@ std::shared_ptr<Config> GB28181Server::GetConfig()
     return m_config;
 }
 
-int GB28181Server::OpenRtpServer(const std::string& streamId, int port, int tcpMode)
+std::string GB28181Server::CreateStreamId(const StreamInfo& info)
+{
+    if (!info.streamId.empty())
+        return info.streamId;
+
+    std::string streamId = info.deviceId + "_" + info.channelId + "_" + std::to_string(info.streamNumber) + "_" + std::to_string(info.tcpMode);
+    if (!info.startTime.empty() && !info.endTime.empty()) {
+        std::string start = TimeUtils::secondsChangeFormat(info.startTime, "%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M%S");
+        std::string end = TimeUtils::secondsChangeFormat(info.endTime, "%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M%S");
+        streamId.append("_").append(start).append("_").append(end);
+    }
+    return streamId;
+}
+
+int GB28181Server::OpenRtpServer(const std::string& streamId, int rtpPort, int tcpMode)
 {
     httplib::Client cli("localhost", 80);
     cli.set_connection_timeout(2, 0);
     char url[256];// = "/index/api/openRtpServer?port=0&secret=xZqp6Gi4W637Ns6WE2A0aiHUBeWeINah&stream_id=34020000001180000002_34020000001320000002_3&tcp_mode=0";
-    snprintf(url, sizeof(url), "/index/api/openRtpServer?port=%d&secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s&tcp_mode=%d", port, streamId.c_str(), tcpMode);
+    snprintf(url, sizeof(url), "/index/api/openRtpServer?port=%d&secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s&tcp_mode=%d", rtpPort, streamId.c_str(), tcpMode);
     auto res = cli.Get(url);
     if (!res) {
         LOG_ERROR << "error code: " << res.error();
@@ -142,6 +164,79 @@ int GB28181Server::OpenRtpServer(const std::string& streamId, int port, int tcpM
         return port;
     }
     return -1;
+}
+
+int GB28181Server::PauseRtpCheck(const std::string& streamId)
+{
+    httplib::Client cli("localhost", 80);
+    cli.set_connection_timeout(2, 0);
+    char url[256];
+    snprintf(url, sizeof(url), "/index/api/pauseRtpCheck?secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s", streamId.c_str());
+    auto res = cli.Get(url);
+    if (!res) {
+        LOG_ERROR << "error code: " << res.error();
+        return -1;
+    }
+    LOG_INFO << res->status;
+    LOG_INFO << res->get_header_value("Content-Type");
+    LOG_INFO << res->body;
+
+    if (res->status != 200) {
+        return -1;
+    }
+
+    Json::Reader reader;
+    Json::Value root;
+    if (!reader.parse(res->body, root)) {
+        return -1;
+    }
+
+    int code = root.get("code", -1).asInt();
+    return code;
+}
+
+int GB28181Server::ResumeRtpCheck(const std::string& streamId)
+{
+    httplib::Client cli("localhost", 80);
+    cli.set_connection_timeout(2, 0);
+    char url[256];
+    snprintf(url, sizeof(url), "/index/api/resumeRtpCheck?secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s", streamId.c_str());
+    auto res = cli.Get(url);
+    if (!res) {
+        LOG_ERROR << "error code: " << res.error();
+        return -1;
+    }
+    LOG_INFO << res->status;
+    LOG_INFO << res->get_header_value("Content-Type");
+    LOG_INFO << res->body;
+
+    if (res->status != 200) {
+        return -1;
+    }
+
+    Json::Reader reader;
+    Json::Value root;
+    if (!reader.parse(res->body, root)) {
+        return -1;
+    }
+
+    int code = root.get("code", -1).asInt();
+    return code;
+}
+
+std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& realm)
+{
+    m_streamSeq++;
+    if (m_streamSeq > 9999)
+        m_streamSeq = 1;
+
+    std::stringstream ss;
+    ss << std::setw(4) << std::setfill('0') << m_streamSeq;
+    //第1位为历史或者实时流,0为实时，1为历史
+    //第2-6位取监控域的4-8位
+    //第7-10位为不充分的媒体流标识，这里使用自增，每生成一个ssrc都自增
+    std::string ssrc = std::to_string((int)isHistory) + realm.substr(3, 5) + ss.str();
+    return ssrc;
 }
 
 void GB28181Server::Catalog()

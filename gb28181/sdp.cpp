@@ -3,7 +3,7 @@
 //请求点播的sdp，使用udp，播主码流
 ================================================
 v=0
-o=34020000001320000002 0 0 IN IP4 172.16.19.108
+o=34010000002000000001 0 0 IN IP4 172.16.19.108
 s=Play
 c=IN IP4 172.16.19.108
 t=0 0
@@ -20,8 +20,9 @@ f=
 //请求回放的sdp，使用Tcp主动，播子码流1
 ================================================
 v=0
-o=34020000001320000002 0 0 IN IP4 172.16.19.108
+o=34020000002000000001 0 0 IN IP4 172.16.19.108
 s=PlayBack
+u=34020000001320000001:0
 c=IN IP4 172.16.19.108
 t=1760457600 1760543999
 m=video 30884 TCP/RTP/AVP 96 97 98 99
@@ -46,9 +47,13 @@ std::string BuildInvateRequestSdp(const SdpParam& sdpParam)
 {
     std::string content;
     content.append("v=0\r\n");
-    content.append("o=" + sdpParam.id + " 0 0 IN IP4 " + sdpParam.ip + "\r\n");
+    //o=一般使用发送sdp设备的id，而不是接受sdp设备的id
+    content.append("o=" + sdpParam.deviceId + " 0 0 IN IP4 " + sdpParam.ip + "\r\n");
     content.append("s=" + sdpParam.type + "\r\n");
-    content.append("u=" + sdpParam.id + ":0\r\n");
+    if (sdpParam.type == kTransPlayBack || sdpParam.type == kTransDownload) {
+        //获取历史媒体才需要u=
+        content.append("u=" + sdpParam.channelId + ":0\r\n");
+    }
     content.append("c=IN IP4 " + sdpParam.ip + "\r\n");
     content.append("t=" + std::to_string(sdpParam.start) + " " + std::to_string(sdpParam.end) + "\r\n");
     if (sdpParam.mode == kTransTcpPassive) {

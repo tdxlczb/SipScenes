@@ -106,7 +106,7 @@ void SipServer::Loop()
     }
 }
 
-int SipServer::Call(const std::string& callUid, const ClientInfo& clientInfo, const std::string& sdp)
+int SipServer::Call(const std::string& callUid, const ClientInfo& clientInfo, const InviteOptions& options)
 {
     auto iter = m_mapDialog.find(callUid);
     if (iter != m_mapDialog.end()) {
@@ -114,7 +114,7 @@ int SipServer::Call(const std::string& callUid, const ClientInfo& clientInfo, co
         m_mapDialog.erase(callUid);
     }
 
-    int iRet = Request_INVITE(clientInfo, sdp);
+    int iRet = Request_INVITE(clientInfo, options);
     if (iRet > 0) {
         DialogInfo dialogInfo;
         dialogInfo.callUid = callUid;
@@ -157,7 +157,7 @@ int SipServer::RequestInfo(const std::string& callUid, const std::string& body)
 
 void SipServer::EventHandle(eXosip_event_t* pSipEvt)
 {
-    LOGI("received type:%d", pSipEvt->type);
+    //LOGI("received type:%d", pSipEvt->type);
     this->DumpRequest(pSipEvt);
     this->DumpResponse(pSipEvt);
 
@@ -474,7 +474,7 @@ void SipServer::DumpMessage(osip_message_t* pSipMsg)
     size_t szLen;
     osip_message_to_str(pSipMsg, &pMsg, &szLen);
     if (pMsg) {
-        LOGI("\nprint message start\n%s\nprint message end\n", pMsg);
+        LOGI("\n==========print message start\n%s\n==========print message end\n", pMsg);
     }
     osip_free(pMsg);
 }
@@ -485,7 +485,7 @@ void SipServer::DumpRequest(eXosip_event_t* pSipEvt)
     size_t szLen;
     osip_message_to_str(pSipEvt->request, &pMsg, &szLen);
     if (pMsg) {
-        LOGI("\nprint request start\ntype=%d\n%s\nprint request end\n", pSipEvt->type, pMsg);
+        LOGI("\n==========print request start\ntype=%d\n%s\n==========print request end\n", pSipEvt->type, pMsg);
     }
     osip_free(pMsg);
 }
@@ -496,7 +496,7 @@ void SipServer::DumpResponse(eXosip_event_t* pSipEvt)
     size_t szLen;
     osip_message_to_str(pSipEvt->response, &pMsg, &szLen);
     if (pMsg) {
-        LOGI("\nprint response start\ntype=%d\n%s\nprint response end\n", pSipEvt->type, pMsg);
+        LOGI("\n==========print response start\ntype=%d\n%s\n==========print response end\n", pSipEvt->type, pMsg);
     }
     osip_free(pMsg);
 }
@@ -804,44 +804,30 @@ void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
     }
 }
 
-int SipServer::Request_INVITE(const ClientInfo& clientInfo, const std::string& sdp)
+int SipServer::Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options)
 {
-    char sSessionExp[1024] = { 0 };
-    osip_message_t* pMsg = nullptr;
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
-    //char sSdp[2048] = { 0 };
-    char sHead[1024] = { 0 };
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
 
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str()); //<sip:媒体流接收者设备编码 @源域名>; tag = e3719a0b
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流发送者的信息(此处设备发送，故填设备信息
-    //sprintf_s(sSdp, 2048,
-    //    "v=0\r\n"
-    //    "o=%s 0 0 IN IP4 %s\r\n"
-    //    "s=Play\r\n"
-    //    "c=IN IP4 %s\r\n"
-    //    "t=0 0\r\n"
-    //    "m=video %d RTP/AVP 96 97 98 99\r\n"
-    //    "a=recvonly\r\n"
-    //    "a=rtpmap:96 PS/90000\r\n"
-    //    "a=rtpmap:97 MPEG4/90000\r\n"
-    //    "a=rtpmap:98 H264/90000\r\n"
-    //    "a=rtpmap:99 H265/90000\r\n"
-    //    "a=streamnumber:0\r\n"
-    //    "y=0200000000\r\n" , m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), clientInfo.iRtpPort);
-
+    osip_message_t* pMsg = nullptr;
     int iRet = eXosip_call_build_initial_invite(m_pSipCtx, &pMsg, sTo, sFrom, nullptr, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
         return -1;
     }
 
-    osip_message_set_body(pMsg, sdp.c_str(), sdp.length());
-    //osip_message_set_body(pMsg, sSdp, strlen(sSdp));
+    osip_message_set_body(pMsg, options.sdp.c_str(), options.sdp.length());
     osip_message_set_content_type(pMsg, "application/sdp");
-    snprintf(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", kTimeout);
-    osip_message_set_header(pMsg, "Session-Expires", sSessionExp);
-    osip_message_set_supported(pMsg, "timer");
+    osip_message_set_header(pMsg, "Allow", "INVITE, ACK, INFO, CANCEL, BYE, OPTIONS, REGISTER, MESSAGE");
+    if (!options.subject.empty()) {
+        osip_message_set_header(pMsg, "Subject", options.subject.c_str());
+    }
+    //char sSessionExp[1024] = { 0 };
+    //snprintf(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", kTimeout);
+    //osip_message_set_header(pMsg, "Session-Expires", sSessionExp);
+    //osip_message_set_supported(pMsg, "timer"); //会话计时器
 
     int iCallId = eXosip_call_send_initial_invite(m_pSipCtx, pMsg);
     if (iCallId > 0) {
@@ -879,11 +865,11 @@ int SipServer::Request_BYE(const ClientInfo& clientInfo)
 
     osip_message_set_contact(pMsg, sContact);
     
-    char sBranch[1024] = "z9hG4bK1147033244";
-    char sCallId[1024] = "1040150870";
+    char sBranch[1024] = "z9hG4bK4164472032";
+    char sCallId[1024] = "3400557450";
     char sCSeq[1024] = "21";
-    char sFromTag[1024] = "3691124318";
-    char sToTag[1024] = "1356799397";
+    char sFromTag[1024] = "1868317067";
+    char sToTag[1024] = "7865737";
 
     //osip_call_id_free(pMsg->call_id);
     //pMsg->call_id = NULL;
