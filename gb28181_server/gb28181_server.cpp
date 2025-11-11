@@ -3,7 +3,7 @@
 
 #include "json/json.h"
 #include "http_server.h"
-#include "sip_server.h"
+#include "sip/sip_server.h"
 #include "tools/config.h"
 #include "tools/file_utils.h"
 #include "tools/time_utils.h"

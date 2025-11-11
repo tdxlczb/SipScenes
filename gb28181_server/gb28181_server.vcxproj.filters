@@ -13,12 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="sip">
+      <UniqueIdentifier>{582a5840-4f28-4a50-a65a-1da03aef961f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="sip_server.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="gb28181_server.cpp">
@@ -27,11 +27,14 @@
     <ClCompile Include="http_server.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="sip\sip_event.cpp">
+      <Filter>sip</Filter>
+    </ClCompile>
+    <ClCompile Include="sip\sip_server.cpp">
+      <Filter>sip</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="sip_server.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="gb28181_server.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -40,6 +43,15 @@
     </ClInclude>
     <ClInclude Include="common_def.h">
       <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sip\sip_event.h">
+      <Filter>sip</Filter>
+    </ClInclude>
+    <ClInclude Include="sip\sip_server.h">
+      <Filter>sip</Filter>
+    </ClInclude>
+    <ClInclude Include="sip\sip_define.h">
+      <Filter>sip</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
