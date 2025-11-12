@@ -22,7 +22,7 @@
     <ClCompile Include="..\3rd\tinyxml2\include\tinyxml2.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="device_channel.cpp" />
-    <ClCompile Include="message_xml.cpp" />
+    <ClCompile Include="manscdp.cpp" />
     <ClCompile Include="sdp.cpp" />
     <ClCompile Include="stream.cpp" />
   </ItemGroup>
@@ -30,7 +30,7 @@
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="device_channel.h" />
-    <ClInclude Include="message_xml.h" />
+    <ClInclude Include="manscdp.h" />
     <ClInclude Include="sdp.h" />
     <ClInclude Include="stream.h" />
   </ItemGroup>

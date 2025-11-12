@@ -9,7 +9,7 @@
 #include "tools/time_utils.h"
 #include "tools/log.h"
 #include "gb28181/sdp.h"
-#include "gb28181/message_xml.h"
+#include "gb28181/manscdp.h"
 #include "gb28181/stream.h"
 
 GB28181Server::GB28181Server()
@@ -112,6 +112,14 @@ int GB28181Server::ControlStream(const StreamInfo& info)
         return -1;
     }
     return m_sipServer->RequestInfo(streamId, body);
+}
+
+int GB28181Server::GetDeviceList(const MessageInfo& info)
+{
+    m_threadPool.enqueue([this, info]() {
+        QueryCatalog(info);
+        });
+    return 0;
 }
 
 std::shared_ptr<Config> GB28181Server::GetConfig()
@@ -239,10 +247,55 @@ std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& realm)
     return ssrc;
 }
 
-void GB28181Server::Catalog()
+int GB28181Server::CreateSN()
 {
-    std::promise<int> result;
-    result.set_value(1);
+    return ++m_messageSn;
+}
+
+void GB28181Server::QueryCatalog(const MessageInfo& info)
+{
+    gb28181::QueryCatalog query;
+    query.CmdType = gb28181::kCatalog;
+    query.SN = CreateSN();
+    query.DeviceID = info.deviceId;
+    std::string xml = gb28181::BuildQueryCatalog(query);
+
+    ClientInfo clientInfo;
+    clientInfo.sUser = info.deviceId;
+    clientInfo.sIp = info.ip;
+    clientInfo.iPort = info.port;
+    m_sipServer->RequestMessage(clientInfo, xml);
+}
+
+void GB28181Server::QueryDeviceInfo(const MessageInfo& info)
+{
+    gb28181::QueryDeviceInfo query;
+    query.CmdType = gb28181::kDeviceInfo;
+    query.SN = CreateSN();
+    query.DeviceID = info.deviceId;
+    std::string xml = gb28181::BuildQuery(query);
+
+    ClientInfo clientInfo;
+    clientInfo.sUser = info.deviceId;
+    clientInfo.sIp = info.ip;
+    clientInfo.iPort = info.port;
+    m_sipServer->RequestMessage(clientInfo, xml);
+}
+
+void GB28181Server::OnRegister(const ClientInfo& clientInfo)
+{
+    MessageInfo info;
+    info.deviceId = clientInfo.sUser;
+    info.ip = clientInfo.sIp;
+    info.port = clientInfo.iPort;
+    m_threadPool.enqueue([this, info]() {
+        QueryCatalog(info);
+        });
+}
+
+void GB28181Server::OnMessage(const ClientInfo& info, const std::string& message)
+{
+    gb28181::Catalog catalogInfo = gb28181::GetCatalog(message);
 
 }
 
@@ -276,7 +329,7 @@ bool GB28181Server::StartSipServer()
 
     if (!m_sipServer->Init(info))
         return false;
-
+    m_sipServer->SetSipEvent(this);
     m_sipThread = std::thread([this]() {
         m_sipServer->Loop();
         });

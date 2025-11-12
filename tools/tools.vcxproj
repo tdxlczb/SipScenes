@@ -129,6 +129,7 @@
     <ClCompile Include="http_digest.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="md5.cpp" />
+    <ClCompile Include="thread_pool.cpp" />
     <ClCompile Include="time_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +140,7 @@
     <ClInclude Include="http_digest.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="md5.h" />
+    <ClInclude Include="thread_pool.h" />
     <ClInclude Include="time_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

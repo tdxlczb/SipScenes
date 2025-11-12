@@ -137,7 +137,7 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         }
         Json::Value result;
         result["code"] = ret;
-        result["msg"] = "failed";
+        result["msg"] = "";
         result["data"] = Json::ValueType::objectValue;
         res.set_content(result.toStyledString(), "text/plain");
         });
@@ -148,6 +148,20 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         int ret = -1;
         if (shared) {
             ret = shared->ControlStream(info);
+        }
+        Json::Value result;
+        result["code"] = ret;
+        result["msg"] = "";
+        result["data"] = Json::ValueType::objectValue;
+        res.set_content(result.toStyledString(), "text/plain");
+        });
+
+    m_server.Post("/getDeviceList", [this](const httplib::Request& req, httplib::Response& res) {
+        MessageInfo info = GetMessageInfo(req.body);
+        std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
+        int ret = -1;
+        if (shared) {
+            ret = shared->GetDeviceList(info);
         }
         Json::Value result;
         result["code"] = ret;
@@ -203,5 +217,19 @@ StreamInfo HttpServer::GetStreamInfo(const std::string& body)
     info.controlType = root.get("controlType", 0).asInt();
     info.seekTime = root.get("seekTime", 0).asInt64();
     info.speed = root.get("speed", 1.0).asDouble();
+    return info;
+}
+
+MessageInfo HttpServer::GetMessageInfo(const std::string& body)
+{
+    MessageInfo info;
+    Json::Reader reader;
+    Json::Value root;
+    if (!reader.parse(body, root)) {
+        return info;
+    }
+    info.deviceId = root.get("deviceId", "").asString();
+    info.ip = root.get("ip", "").asString();
+    info.port = root.get("port", 0).asInt();
     return info;
 }

@@ -17,3 +17,10 @@ struct StreamInfo
     int64_t seekTime; //表示从startTime的多少秒之后开始播放
     double speed = 1.0;
 };
+
+struct MessageInfo
+{
+    std::string deviceId;
+    std::string ip;
+    int port = 0;
+};

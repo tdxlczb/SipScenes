@@ -14,7 +14,7 @@ struct ServerInfo {
 };
 
 struct ClientInfo {
-    std::string sUser;// 340200000013200000024
+    std::string sUser;// 客户端名称
     std::string sIp; // 客户端ip
     int iPort = 0; // 客户端端口
     bool isReg = false;//是否注册

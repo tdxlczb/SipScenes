@@ -5,11 +5,10 @@
 
 #include "gb28181_server.h"
 
-#include "gb28181/message_xml.h"
+#include "gb28181/manscdp.h"
 
 int main()
 {
-    gb28181::Test();
     auto server = std::make_shared<GB28181Server>();
     server->Start();
 

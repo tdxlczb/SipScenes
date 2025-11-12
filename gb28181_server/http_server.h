@@ -14,6 +14,7 @@ public:
     bool Init(std::weak_ptr<GB28181Server> gbServer, const std::string& ip, int port);
 
     StreamInfo GetStreamInfo(const std::string& body);
+    MessageInfo GetMessageInfo(const std::string& body);
 private:
     httplib::Server m_server;
 	std::weak_ptr<GB28181Server> m_gbServer;

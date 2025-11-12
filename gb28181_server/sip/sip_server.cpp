@@ -27,9 +27,6 @@ static void make_nonce(char* nonce, int len)
 
 }
 
-
-///////已含有功能：注册 注销 实时点播
-
 SipServer::SipServer()
 	: m_pSipCtx(nullptr)
     , m_isRun(false)
@@ -104,6 +101,11 @@ void SipServer::Loop()
         //释放事件资源
         eXosip_event_free(pSipEvt);
     }
+}
+
+void SipServer::SetSipEvent(SipEvent* pEvent)
+{
+    m_pSipEvent = pEvent;
 }
 
 int SipServer::Call(const std::string& callUid, const ClientInfo& clientInfo, const InviteOptions& options)
@@ -506,48 +508,18 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     osip_authorization_t* pAuth = nullptr;
     osip_message_get_authorization(pSipEvt->request, 0, &pAuth);
 
-    /*
-    * 摄像头向sip服务器进行注册的首要信息，若还未携带Authorization字段则需要返回401信息并携带服务器数据以告知设备我方信息
-    REGISTER sip:SIP服务器编码@目的域名或IP地址端口 SIP/2.0
-    Via: SIP/2.0/UDP 源域名或IP地址端口
-    From: <sip:SIP设备编码@源域名>;tag=185326220
-    To: <sip:SIP设备编码@源域名>
-    Call-ID: ms1214-322164710-681262131542511620107-0@172.18.16.3
-    CSeq: 1 REGISTER
-    Contact:<sip:SIP设备编码@源IP地址端口>
-    Max-Forwards:70
-    Expires:3600
-    Content-Length:0
-    */
     //如果缺乏来源Authorization信息则进入注册/注销信息响应构建
     if (nullptr == pAuth || nullptr == pAuth->username) {
         Response_REGISTER_401unauthorized(pSipEvt);
         return;
     }
 
-    /*
-    * 如果有Authorization，则进行信息提取以校验
-    J.1.3 Registersip:SIP服务器编码@目的域名或IP地址端口 SIP/2.0
-    Via:SIP/2.0/UDP 源域名或IP地址端口
-    From:<sip:SIP设备编码@源域名>;tag=185326220
-    To:<sip:SIP设备编码@源域名>
-    Call-ID:ms1214-322164710-681262131542511620107-0@172.18.16.3
-    CSeq:2Register
-    Contact:<sip:SIP设备编码@源IP地址端口>
-    Authorization:Digestusername="64010000002020000001",realm="64010000",nonce="6fe9
-    ba44a76be22a",uri="sip:64010000002000000001@172.18.16.5:5060",response="9625d92d1bddea
-    7a911926e0db054968",algorithm=MD5
-    Max-Forwards:70
-    Expires:3600
-    Content-Length:0
-    */
-
     //注意字符串处理的方法，内部申请了内存，用完记得释放，避免内存泄露
     char* method = pSipEvt->request->sip_method; // REGISTER
     //提取字符串并消除其中的双引号
 #define SIP_strdup(FIELD) char* FIELD = NULL; if (pAuth->FIELD) (FIELD) = osip_strdup_without_quote(pAuth->FIELD)
     SIP_strdup(algorithm); // MD5
-    SIP_strdup(username); // 340200000013200000024 SIP用户名
+    SIP_strdup(username); // SIP用户名
     SIP_strdup(realm); // sip服务器传给客户端，客户端携带并提交上来的sip服务域
     SIP_strdup(nonce); // sip服务器传给客户端，客户端携带并提交上来的nonce
     SIP_strdup(nonce_count);
@@ -571,32 +543,32 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     //提取主机端口用户名信息
     osip_contact_t* pContact = nullptr;
     osip_message_get_contact(pSipEvt->request, 0, &pContact);
-    //hash验证，验证交互信息一致性
-    if (0 == memcmp(hashResponse, response, HASHHEXLEN)) {//一致则注册/注销此用户
 
+    ClientInfo clientInfo;
+    clientInfo.sUser = username;
+    clientInfo.sIp = pContact->url->host;
+    clientInfo.iPort = atoi(pContact->url->port);
+
+    //hash验证，验证交互信息一致性
+    if (response && 0 == memcmp(hashResponse, response, HASHHEXLEN)) {//一致则注册/注销此用户
         int iExpires = -1;
         osip_header_t* stExpires = nullptr;
-        osip_message_get_expires(pSipEvt->request, 0, &stExpires);
-        //是注销
+        osip_message_get_expires(pSipEvt->request, 0, &stExpires);  
         LOGI("Expires:%s,%s", stExpires->hname, stExpires->hvalue);
         if (0 == atoi(stExpires->hvalue)) {
-            LOGI("Camera unregistration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            //m_mapClient.erase(_strdup(username));
-            //LOGI("Camera num:%llu", m_mapClient.size());
+            //注销
+            LOGI("unregister success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
             this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注销通过
         }
         else {
-            LOGI("Camera registration success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            //ClientInfo clientInfo{ _strdup(username), _strdup(pContact->url->host), atoi(pContact->url->port), false };
-            //m_mapClient.insert(std::make_pair(clientInfo.sUser, clientInfo));
-            //LOGI("Camera num:%llu", m_mapClient.size());
+            LOGI("register success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
             this->MessageSendAnswer(pSipEvt, 200);//通知摄像头注册通过
-            //this->Request_INVITE(pstClientInfo);
-            //this->Request_MESSAGE(clientInfo);
+            if (m_pSipEvent)
+                m_pSipEvent->OnRegister(clientInfo);
         }
     }
     else {//否则不予加入
-        LOGI("Camera registration error, ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
+        LOGI("register error, ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
         this->MessageSendAnswer(pSipEvt, 401);//注册/注销失败
     }
 
@@ -613,22 +585,13 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
 
 void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
 {
-    /*
-    * 这里需要构建一个如下的消息体，其中需要携带回去的信息主要是：WWW-Authenticate:Digestrealm="64010000",nonce="6fe9ba44a76be22a"
-    J.1.2 SIP/2.0401Unauthorized
-    To:sip:SIP设备编码@源域名
-    Content-Length:0
-    CSeq:1Register
-    Call-ID:ms1214-322164710-681262131542511620107-0@172.18.16.3
-    From:<sip:SIP设备编码@源域名>;tag=185326220
-    Via:SIP/2.0/UDP源域名或IP地址端口
-    WWW-Authenticate:Digestrealm="64010000",nonce="6fe9ba44a76be22a"
-    */
+    //这里需要构建一个如下的消息体
+    //WWW-Authenticate: Digest realm="3402000000", nonce="1762863282", algorithm=MD5, qop="auth" 
+
     char nonce[64] = {0};
     make_nonce(nonce, sizeof(nonce));
 
     char* pDest = nullptr;
-    osip_message_t* pMsg = nullptr;
     osip_www_authenticate_t* pHeader = nullptr;
     osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
     osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
@@ -637,6 +600,7 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
     osip_www_authenticate_set_algorithm(pHeader, osip_strdup("MD5"));
     osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//这里要加双引号
     osip_www_authenticate_to_str(pHeader, &pDest);//将响应头的内容输出成字符串
+    osip_message_t* pMsg = nullptr;
     int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//构建一个响应
     if (OSIP_SUCCESS != iRet || !pMsg) {
         LOGE("eXosip_message_build_answer failed:%d", iRet);
@@ -669,35 +633,21 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
 
 void SipServer::Response_MESSAGE(eXosip_event_t* pSipEvt)
 {
+    this->MessageSendAnswer(pSipEvt, 200);
+    //提取主机端口用户名信息
+    osip_contact_t* pContact = nullptr;
+    osip_message_get_contact(pSipEvt->request, 0, &pContact);
+
+    ClientInfo clientInfo;
+    if (pContact) {
+        clientInfo.sUser = pContact->url->username;
+        clientInfo.sIp = pContact->url->host;
+        clientInfo.iPort = atoi(pContact->url->port);
+    }
     osip_body_t* pBody = nullptr;
-    char sCmdType[64] = { 0 };
-    char sDeviceID[64] = { 0 };
     osip_message_get_body(pSipEvt->request, 0, &pBody);
-    if (pBody) {
-        parseXml(pBody->body, "<CmdType>", false, "</CmdType>", false, sCmdType);
-        parseXml(pBody->body, "<DeviceID>", false, "</DeviceID>", false, sDeviceID);
-    }
-
-    //    Client *client = getClientByDevice(DeviceID);
-    //    if(client){
-    //        LOGI("response_message：%s 已注册",DeviceID);
-    //    }else{
-    //        LOGE("response_message：%s 未注册",DeviceID);
-    //    }
-    LOGI("CmdType=%s,DeviceID=%s", sCmdType, sDeviceID);
-
-    if (0 == strcmp(sCmdType, "Keepalive")) {//这是一个保活的请求，正常的回应一个200就ok
-        this->MessageSendAnswer(pSipEvt, 200);
-    }
-    else if (0 == strcmp(sCmdType, "Catalog")) {//?
-        this->MessageSendAnswer(pSipEvt, 200);
-    }
-    else if (0 == strcmp(sCmdType, "Broadcast")) {//?
-        this->MessageSendAnswer(pSipEvt, 200);
-    }
-    else {//其余信息
-        this->MessageSendAnswer(pSipEvt, 200);
-    }
+    if (m_pSipEvent)
+        m_pSipEvent->OnMessage(clientInfo, std::string(pBody->body));
 }
 
 void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
@@ -802,6 +752,7 @@ void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
     else {
         LOGE("MessageSendAnswer error iStatus=%d,iRet=%d,pMsg=%d", iStatus, iRet, pMsg != nullptr);
     }
+    //osip_message_free(pMsg);//发送操作是将消息对象扔到线程队列，这里不能直接释放消息内存
 }
 
 int SipServer::Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options)
@@ -918,45 +869,30 @@ int SipServer::Request_BYE(const ClientInfo& clientInfo)
 int SipServer::Request_MESSAGE(const ClientInfo& clientInfo, const std::string& message)
 {
     LOGI("MESSAGE");
-    char sSessionExp[1024] = { 0 };
-    osip_message_t* pMsg = nullptr;
+
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
-    char sContact[1024] = { 0 };
-    char sXml[2048] = { 0 };
-    char sHead[1024] = { 0 };
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
 
-    sprintf_s(sFrom, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort); //<sip:媒体流发送者设备编码 @源域名>; tag = e3719a0b
-    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);//<sip:媒体流发送者设备编码@源IP地址端口>
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);//填媒体流接收者的信息(此处设备发送，故填设备信息
-
-    sprintf_s(sXml, 2048,
-        "<? xmlversion=\"1.0\" ?>\r\n"
-        "<Notify>\r\n"
-        "<CmdType>Broadcast</CmdType>\r\n"
-        "<SN>992</SN>\r\n"
-        "<SourceID>34020000002000000001</SourceID>\r\n"
-        "<TargetID>34020000001370000012</TargetID>\r\n"
-        //"<TargetID>34020000001370000001</TargetID>\r\n"
-        "</Notify>\r\n"
-    );
-
+    osip_message_t* pMsg = nullptr;
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
+        //osip_message_free(pMsg);//创建失败内部会释放内存，这里不需要释放
         return -1;
     }
-    osip_message_set_body(pMsg, sXml, strlen(sXml));
+    osip_message_set_body(pMsg, message.c_str(), message.length());
     osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//设置请求消息的内容类型
 
     int iCallId = eXosip_message_send_request(m_pSipCtx, pMsg);
-
     if (iCallId > 0) {
         LOGI("eXosip_message_send_request success: iCallId=%d", iCallId);
     }
     else {
         LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
     }
+    //osip_message_free(pMsg);//发送操作是将消息对象扔到线程队列，这里不能直接释放消息内存
     return iCallId;
 }
 
@@ -971,6 +907,7 @@ int SipServer::Request_INFO(const DialogInfo& dlgInfo, const std::string& body)
     int ret = eXosip_call_build_info(m_pSipCtx, dlgInfo.exDialogId, &info);
     if (ret != 0) {
         LOGE("eXosip_call_build_info error: ret=%d", ret);
+        //osip_message_free(info);//创建失败内部会释放内存，这里不需要释放
         return -1;
     }
 
@@ -978,23 +915,6 @@ int SipServer::Request_INFO(const DialogInfo& dlgInfo, const std::string& body)
     osip_message_set_body(info, body.c_str(), body.length());
     ret = eXosip_call_send_request(m_pSipCtx, dlgInfo.exDialogId, info);
     LOGE("eXosip_call_send_request: ret=%d", ret);
+    //osip_message_free(info);//发送操作是将消息对象扔到线程队列，这里不能直接释放消息内存
     return ret;
-}
-
-bool SipServer::parseXml(const char* pData, const char* pSMark, bool isWithSMake, const char* pEMark, bool isWithEMake, char* pDest)
-{
-    const char* satrt = strstr(pData, pSMark);
-
-    if (satrt != NULL) {
-        const char* end = strstr(satrt, pEMark);
-
-        if (end != NULL) {
-            int s_pos = isWithSMake ? 0 : strlen(pSMark);
-            int e_pos = isWithEMake ? strlen(pEMark) : 0;
-
-            strncpy_s(pDest, 64, satrt + s_pos, (end + e_pos) - (satrt + s_pos));
-        }
-        return true;
-    }
-    return false;
 }

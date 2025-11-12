@@ -6,6 +6,7 @@ extern "C" {
 
 #include <map>
 #include "sip_define.h"
+#include "sip_event.h"
 
 class SipServer
 {
@@ -16,6 +17,8 @@ public:
     bool Init(const ServerInfo& serverInfo);
     // 事件处理循环
     void Loop();
+    // 设置事件回调
+    void SetSipEvent(SipEvent* pEvent);
     // 请求通话
     int Call(const std::string& callUid, const ClientInfo& clientInfo, const InviteOptions& options);
     // 停止通话
@@ -93,17 +96,6 @@ public:
     /// </summary>
     /// <param name="DialogInfo">发送的目的对象</param>
     int Request_INFO(const DialogInfo& dlgInfo, const std::string& body);
-    /// <summary>
-    /// 解析xml，提取出其中一项的值
-    /// </summary>
-    /// <param name="pData"></param>
-    /// <param name="pSMark"></param>
-    /// <param name="isWithSMake"></param>
-    /// <param name="pEMark"></param>
-    /// <param name="isWithEMake"></param>
-    /// <param name="pDest"></param>
-    /// <returns></returns>
-    bool parseXml(const char* pData, const char* pSMark, bool isWithSMake, const char* pEMark, bool isWithEMake, char* pDest);
 private:
     const std::string kUserAgent = "GB28181-Server";
     const int kTimeout = 1800;
@@ -112,6 +104,7 @@ private:
     ServerInfo m_serverInfo;        //服务器信息
     struct eXosip_t* m_pSipCtx;//Sip上下文
     bool m_isRun = false;//是否正在事件循环
+    SipEvent* m_pSipEvent = nullptr;
 
     std::map<int, DialogInfo> m_mapCall;// <cid,callUid> exosip2管理的cid，绑定会话，用于发送Invite之后的预绑定
     std::map<std::string, DialogInfo> m_mapDialog;// <callUid,DialogInfo> 呼叫的自定义callId，绑定会话，用于成功创建会话之后的真实绑定

@@ -18,9 +18,6 @@
     <ClCompile Include="sdp.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="message_xml.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rd\tinyxml2\include\tinyxml2.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -33,12 +30,12 @@
     <ClCompile Include="stream.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="manscdp.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sdp.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="message_xml.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h">
@@ -51,6 +48,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="stream.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
