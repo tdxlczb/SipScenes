@@ -5,36 +5,36 @@
 #include <map>
 
 struct ServerInfo {
-    std::string sIp;//·şÎñÆ÷IP
-    int iPort = 0;//·şÎñÆ÷¶Ë¿Ú
-    std::string sUser; //·şÎñÆ÷Ãû³Æ»òId
-    std::string sPwd;//·şÎñÆ÷ÃÜÂë£¬Èç¹ûÉèÖÃÁË·şÎñÆ÷ÃÜÂë£¬ÔòÒªÇóËùÓĞ×¢²áµÄÕËºÅ¶¼Ê¹ÓÃ¸ÃÃÜÂë£¬·ñÔòĞèÒªÕËºÅ¹ÜÀí¹¦ÄÜ
-    std::string sDomain;//·şÎñÆ÷ÓòÃû£¬ÓÃÓÚÑ°Ö·ºÍÂ·ÓÉ£¬Æ´½Ósip-url£¬Îª¿ÕÊ±»áÊ¹ÓÃip:port
-    std::string sRealm;//·şÎñÆ÷Óò£¬ÓÃÓÚÈÏÖ¤ºÍ¼øÈ¨£¬Îª¿ÕÊ±»áÊ¹ÓÃdomain
+    std::string sIp;//æœåŠ¡å™¨IP
+    int iPort = 0;//æœåŠ¡å™¨ç«¯å£
+    std::string sUser; //æœåŠ¡å™¨åç§°æˆ–Id
+    std::string sPwd;//æœåŠ¡å™¨å¯†ç ï¼Œå¦‚æœè®¾ç½®äº†æœåŠ¡å™¨å¯†ç ï¼Œåˆ™è¦æ±‚æ‰€æœ‰æ³¨å†Œçš„è´¦å·éƒ½ä½¿ç”¨è¯¥å¯†ç ï¼Œå¦åˆ™éœ€è¦è´¦å·ç®¡ç†åŠŸèƒ½
+    std::string sDomain;//æœåŠ¡å™¨åŸŸåï¼Œç”¨äºå¯»å€å’Œè·¯ç”±ï¼Œæ‹¼æ¥sip-urlï¼Œä¸ºç©ºæ—¶ä¼šä½¿ç”¨ip:port
+    std::string sRealm;//æœåŠ¡å™¨åŸŸï¼Œç”¨äºè®¤è¯å’Œé‰´æƒï¼Œä¸ºç©ºæ—¶ä¼šä½¿ç”¨domain
 };
 
 struct ClientInfo {
-    std::string sUser;// ¿Í»§¶ËÃû³Æ
-    std::string sIp; // ¿Í»§¶Ëip
-    int iPort = 0; // ¿Í»§¶Ë¶Ë¿Ú
-    bool isReg = false;//ÊÇ·ñ×¢²á
+    std::string sUser;// å®¢æˆ·ç«¯åç§°
+    std::string sIp; // å®¢æˆ·ç«¯ip
+    int iPort = 0; // å®¢æˆ·ç«¯ç«¯å£
+    bool isReg = false;//æ˜¯å¦æ³¨å†Œ
 };
 
-//Ö÷ÒªÓÃÓÚ¼ÇÂ¼inviteµÄ»á»°ĞÅÏ¢
+//ä¸»è¦ç”¨äºè®°å½•inviteçš„ä¼šè¯ä¿¡æ¯
 struct DialogInfo
 {
-    std::string callUid;//×Ô¶¨Òåuid£¬ÓÃÓÚ°ó¶¨
+    std::string callUid;//è‡ªå®šä¹‰uidï¼Œç”¨äºç»‘å®š
     int exCallId = 0;
     int exDialogId = 0;
     std::string callId;
     std::string branch;
-    int cseqNum = 0; //»á»°×îĞÂµÄcseq
+    int cseqNum = 0; //ä¼šè¯æœ€æ–°çš„cseq
     std::string fromTag;
     std::string toTag;
     ClientInfo clientInfo;
 };
 
-//inviteµÄĞÅÏ¢
+//inviteçš„ä¿¡æ¯
 struct InviteOptions
 {
     std::string subject;

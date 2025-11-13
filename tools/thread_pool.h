@@ -1,4 +1,4 @@
-﻿#ifndef THREAD_POOL_H
+#ifndef THREAD_POOL_H
 #define THREAD_POOL_H
 
 #include <vector>
@@ -97,6 +97,7 @@ inline ThreadPool::~ThreadPool()
         worker.join();
 }
 
+//线程池测试
 int thread_pool_test();
 
 #endif // THREAD_POOL_H_

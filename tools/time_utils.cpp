@@ -2,7 +2,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-// Ãë¼¶Ê±¼ä´Á×ª×Ö·û´®
+// ç§’çº§æ—¶é—´æˆ³è½¬å­—ç¬¦ä¸²
 std::string TimeUtils::secondsToString(time_t timestamp, const std::string& format) {
     std::tm localTime;
     localtime_s(&localTime, &timestamp);
@@ -11,7 +11,7 @@ std::string TimeUtils::secondsToString(time_t timestamp, const std::string& form
     return oss.str();
 }
 
-// ºÁÃë¼¶Ê±¼ä´Á×ª×Ö·û´®
+// æ¯«ç§’çº§æ—¶é—´æˆ³è½¬å­—ç¬¦ä¸²
 std::string TimeUtils::millisecondsToString(long long milliseconds, const std::string& format) {
     time_t seconds = milliseconds / 1000;
     long long ms = milliseconds % 1000;
@@ -25,7 +25,7 @@ std::string TimeUtils::millisecondsToString(long long milliseconds, const std::s
     return oss.str();
 }
 
-// ×Ö·û´®×ªÊ±¼ä´Á£¨Ãë£©
+// å­—ç¬¦ä¸²è½¬æ—¶é—´æˆ³ï¼ˆç§’ï¼‰
 time_t TimeUtils::stringToSeconds(const std::string& timeStr, const std::string& format) {
     std::tm tm = {};
     std::istringstream iss(timeStr);
@@ -33,9 +33,9 @@ time_t TimeUtils::stringToSeconds(const std::string& timeStr, const std::string&
     return std::mktime(&tm);
 }
 
-// ×Ö·û´®×ªÊ±¼ä´Á£¨ºÁÃë£©
+// å­—ç¬¦ä¸²è½¬æ—¶é—´æˆ³ï¼ˆæ¯«ç§’ï¼‰
 long long TimeUtils::stringToMilliseconds(const std::string& timeStr, const std::string& format) {
-    // ·ÖÀëºÁÃë²¿·Ö
+    // åˆ†ç¦»æ¯«ç§’éƒ¨åˆ†
     std::string timeWithoutMs = timeStr;
     long long milliseconds = 0;
 
@@ -45,24 +45,24 @@ long long TimeUtils::stringToMilliseconds(const std::string& timeStr, const std:
         std::string msStr = timeStr.substr(dotPos + 1);
         milliseconds = std::stoll(msStr);
 
-        // È·±£ºÁÃë²¿·ÖÊÇ3Î»Êı
+        // ç¡®ä¿æ¯«ç§’éƒ¨åˆ†æ˜¯3ä½æ•°
         if (msStr.length() == 1) milliseconds *= 100;
         else if (msStr.length() == 2) milliseconds *= 10;
     }
 
-    // ½âÎöÊ±¼ä×Ö·û´®
+    // è§£ææ—¶é—´å­—ç¬¦ä¸²
     std::tm tm = {};
     std::istringstream iss(timeWithoutMs);
     iss >> std::get_time(&tm, format.c_str());
 
     if (iss.fail()) {
-        throw std::runtime_error("Ê±¼ä×Ö·û´®½âÎöÊ§°Ü");
+        throw std::runtime_error("æ—¶é—´å­—ç¬¦ä¸²è§£æå¤±è´¥");
     }
 
-    // ×ª»»ÎªÊ±¼ä´Á£¨Ãë£©
+    // è½¬æ¢ä¸ºæ—¶é—´æˆ³ï¼ˆç§’ï¼‰
     time_t seconds = std::mktime(&tm);
 
-    // ×éºÏÃëºÍºÁÃë
+    // ç»„åˆç§’å’Œæ¯«ç§’
     return static_cast<long long>(seconds) * 1000 + milliseconds;
 }
 
@@ -76,12 +76,12 @@ std::string TimeUtils::secondsChangeFormat(const std::string& timeStr, const std
     return oss.str();
 }
 
-// »ñÈ¡µ±Ç°Ê±¼ä´Á£¨Ãë£©
+// è·å–å½“å‰æ—¶é—´æˆ³ï¼ˆç§’ï¼‰
 time_t TimeUtils::currentSeconds() {
     return std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 }
 
-// »ñÈ¡µ±Ç°Ê±¼ä´Á£¨ºÁÃë£©
+// è·å–å½“å‰æ—¶é—´æˆ³ï¼ˆæ¯«ç§’ï¼‰
 long long TimeUtils::currentMilliseconds() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();

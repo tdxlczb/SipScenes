@@ -23,8 +23,8 @@ using cmdType = std::string;
 //设备编码类型
 using deviceIDType = std::string;
 
-//命令序列号类型
-using SNType = int; //最小值为1
+//命令序列号类型, 最小值为1
+using SNType = int; 
 
 //状态类型
 using statusType = int;
@@ -61,24 +61,41 @@ struct itemType
     statusType Status = kStatusOFF;
 };
 
+//文件目录项类型
+struct itemFileType
+{
+    deviceIDType DeviceID;
+    std::string Name;
+    std::string FilePath;
+    std::string Address;
+    std::string StartTime;
+    std::string EndTime;
+    int Secrecy = 0;
+    std::string Type;
+    std::string RecorderID;
+    std::string FileSize;
+};
+
 struct ManscdpBase
 {
     cmdType CmdType;
-    int  SN;
+    SNType  SN = 0;
     deviceIDType DeviceID;
 };
 
 using QueryBase = ManscdpBase;
+using NotifyBase = ManscdpBase;
+using ResponseBase = ManscdpBase;
 
 //==================== Catalog ====================
-//设备目录查询或订阅请求 必选:SN,DeviceID  可选:StartTime,EndTime
+//设备目录信息查询
 const cmdType kCatalog = "Catalog";
 struct QueryCatalog : public QueryBase
 {
-    std::string StartTime;
-    std::string EndTime;
+    std::string StartTime;//可选
+    std::string EndTime;//可选
 };
-struct ResponseCatalog : public ManscdpBase
+struct ResponseCatalog : public ResponseBase
 {
     int SumNum = 0;
     std::vector<itemType> DeviceList;
@@ -87,13 +104,10 @@ using Catalog = ResponseCatalog;
 //==================== Catalog ====================
 
 //==================== DeviceStatus ====================
-//设备状态查询请求 必选:SN,DeviceID
+//设备状态查询
 const cmdType kDeviceStatus = "DeviceStatus";
-struct QueryDeviceStatus : public QueryBase
-{
-
-};
-struct ResponseDeviceStatus : public ManscdpBase
+using QueryDeviceStatus = QueryBase;
+struct ResponseDeviceStatus : public ResponseBase
 {
     resultType Result = kResultERROR;
     onlineType Online = kOffline;
@@ -106,25 +120,46 @@ using DeviceStatus = ResponseDeviceStatus;
 //==================== DeviceStatus ====================
 
 //==================== DeviceInfo ====================
-//设备信息查询请求 必选:SN,DeviceID
+//设备信息查询
 const cmdType kDeviceInfo = "DeviceInfo";
-struct QueryDeviceInfo : public QueryBase
-{
-
-};
+using QueryDeviceInfo = QueryBase;
 struct ResponseDeviceInfo : public ManscdpBase
 {
+    std::string DeviceName;
+    resultType Result = kResultERROR;
+    std::string Manufacturer;
+    std::string Model;
 };
 using DeviceInfo = ResponseDeviceInfo;
 
 //==================== DeviceInfo ====================
 
-//==================== PresetQuery ====================
-//设备预置位查询请求 必选:SN,DeviceID
-const cmdType kPresetQuery = "PresetQuery";
+//==================== RecordInfo ====================
+//文件目录检索
+const cmdType kRecordInfo = "RecordInfo";
+struct QueryRecordInfo : public QueryBase
+{
+    std::string StartTime;
+    std::string EndTime;
+    std::string FilePath;
+    std::string Address;
+    int Secrecy = 0;
+    std::string Type;
+    std::string RecorderID;
+    std::string IndistinctQuery;
+};
 
-//==================== PresetQuery ====================
+//==================== RecordInfo ====================
 
+//==================== Keepalive ====================
+//状态信息通知
+const cmdType kKeepalive = "Keepalive";
+struct NotifyKeepalive : public NotifyBase
+{
+    resultType Status = kResultERROR;
+};
+
+//==================== Keepalive ====================
 
 
 struct QueryCmd : public ManscdpBase
@@ -133,7 +168,7 @@ struct QueryCmd : public ManscdpBase
     std::string EndTime;
 };
 
-std::string GetSN();
+int GetSN();
 
 std::string BuildQuery(const QueryBase& manscdp);
 std::string BuildQueryCatalog(const QueryCatalog& manscdp);

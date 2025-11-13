@@ -17,11 +17,11 @@ public:
 
     bool GetBool(const std::string& section, const std::string& key, bool default_value = false);
 
-    // ÏÔÊ¾ËùÓĞÅäÖÃ£¨ÓÃÓÚµ÷ÊÔ£©
+    // æ˜¾ç¤ºæ‰€æœ‰é…ç½®ï¼ˆç”¨äºè°ƒè¯•ï¼‰
     void Display();
 
 private:
-    // È¥³ı×Ö·û´®Á½¶ËµÄ¿Õ°××Ö·û
+    // å»é™¤å­—ç¬¦ä¸²ä¸¤ç«¯çš„ç©ºç™½å­—ç¬¦
     std::string trim(const std::string& str);
 private:
     std::map<std::string, std::map<std::string, std::string>> m_data;

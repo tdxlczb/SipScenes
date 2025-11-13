@@ -14,7 +14,7 @@
 #endif
 
 
-// »ñÈ¡µ±Ç°¹¤×÷Ä¿Â¼
+// è·å–å½“å‰å·¥ä½œç›®å½•
 std::string ProcessPath::GetCurrentWorkingDirectory() {
     char buffer[4096];
     if (GETCWD(buffer, sizeof(buffer)) != nullptr) {
@@ -23,7 +23,7 @@ std::string ProcessPath::GetCurrentWorkingDirectory() {
     return "";
 }
 
-// »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şÍêÕûÂ·¾¶
+// è·å–å¯æ‰§è¡Œæ–‡ä»¶å®Œæ•´è·¯å¾„
 std::string ProcessPath::GetExecutablePath() {
 #ifdef _WIN32
     return getWindowsExecutablePath();
@@ -32,7 +32,7 @@ std::string ProcessPath::GetExecutablePath() {
 #endif
 }
 
-// »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şËùÔÚÄ¿Â¼
+// è·å–å¯æ‰§è¡Œæ–‡ä»¶æ‰€åœ¨ç›®å½•
 std::string ProcessPath::GetExecutableDirectory() {
     std::string path = GetExecutablePath();
     return extractDirectory(path);
@@ -46,17 +46,17 @@ std::string ProcessPath::getWindowsExecutablePath() {
         return std::string(buffer);
     }
 
-    // ±¸ÓÃ·½°¸£ºÊ¹ÓÃ_getcwd
+    // å¤‡ç”¨æ–¹æ¡ˆï¼šä½¿ç”¨_getcwd
     char cwd[MAX_PATH];
     if (_getcwd(cwd, MAX_PATH) != nullptr) {
-        return std::string(cwd) + "\\executable.exe"; // ĞèÒª½áºÏargv[0]
+        return std::string(cwd) + "\\executable.exe"; // éœ€è¦ç»“åˆargv[0]
     }
 
     return "";
 }
 #else
 std::string ProcessPath::getUnixExecutablePath() {
-    // ·½·¨1: Ê¹ÓÃ /proc/self/exe (Linux)
+    // æ–¹æ³•1: ä½¿ç”¨ /proc/self/exe (Linux)
     char buffer[PATH_MAX];
     ssize_t length = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
     if (length != -1) {
@@ -64,7 +64,7 @@ std::string ProcessPath::getUnixExecutablePath() {
         return std::string(buffer);
     }
 
-    // ·½·¨2: Ê¹ÓÃ realpath ºÍ argv[0] (ĞèÒª´Ómain´«Èë)
+    // æ–¹æ³•2: ä½¿ç”¨ realpath å’Œ argv[0] (éœ€è¦ä»mainä¼ å…¥)
     return "";
 }
 #endif

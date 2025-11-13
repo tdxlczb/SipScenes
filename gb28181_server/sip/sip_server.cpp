@@ -19,7 +19,7 @@ extern "C" {
 
 namespace {
 
-/* ¸üĞÂnonce */
+/* æ›´æ–°nonce */
 static void make_nonce(char* nonce, int len)
 {
     snprintf(nonce, len, "%ld", (long)time(NULL));
@@ -63,7 +63,7 @@ bool SipServer::Init(const ServerInfo& serverInfo)
         return false;
     }
 
-    //// ÅäÖÃÏî
+    //// é…ç½®é¡¹
     //int val = 0;
     //eXosip_set_option(m_pSipCtx, EXOSIP_OPT_SET_TLS_VERIFY_CERTIFICATE, (void*)&val);
     //int keep_alive = 17000;
@@ -90,15 +90,15 @@ void SipServer::Loop()
     while (m_isRun) {
         eXosip_event_t* pSipEvt = eXosip_event_wait(m_pSipCtx, 0, 20);
         eXosip_lock(m_pSipCtx);
-        eXosip_automatic_action(m_pSipCtx); // ´¦ÀíÒ»Ğ©×Ô¶¯ĞĞÎª
+        eXosip_automatic_action(m_pSipCtx); // å¤„ç†ä¸€äº›è‡ªåŠ¨è¡Œä¸º
         eXosip_unlock(m_pSipCtx);
 
         if (!pSipEvt) {
-            osip_usleep(100000);// 100ms µÄÑÓÊ±
+            osip_usleep(100000);// 100ms çš„å»¶æ—¶
             continue;
         }
         this->EventHandle(pSipEvt);
-        //ÊÍ·ÅÊÂ¼ş×ÊÔ´
+        //é‡Šæ”¾äº‹ä»¶èµ„æº
         eXosip_event_free(pSipEvt);
     }
 }
@@ -165,153 +165,153 @@ void SipServer::EventHandle(eXosip_event_t* pSipEvt)
 
     switch (pSipEvt->type)
     {
-    case EXOSIP_REGISTRATION_SUCCESS:    // ×¢²á³É¹¦ÊÂ¼ş£ºSIP¿Í»§¶Ë³É¹¦×¢²áµ½·şÎñÆ÷
+    case EXOSIP_REGISTRATION_SUCCESS:    // æ³¨å†ŒæˆåŠŸäº‹ä»¶ï¼šSIPå®¢æˆ·ç«¯æˆåŠŸæ³¨å†Œåˆ°æœåŠ¡å™¨
         // Method: REGISTER
         // Type: Response
-        // Translate: ÊÕµ½ÉÏ¼¶Æ½Ì¨µÄ 2xx ×¢²á³É¹¦
+        // Translate: æ”¶åˆ°ä¸Šçº§å¹³å°çš„ 2xx æ³¨å†ŒæˆåŠŸ
         break;
 
-    case EXOSIP_REGISTRATION_FAILURE:    // ×¢²áÊ§°ÜÊÂ¼ş£ºSIP¿Í»§¶Ë×¢²áÊ§°Ü
+    case EXOSIP_REGISTRATION_FAILURE:    // æ³¨å†Œå¤±è´¥äº‹ä»¶ï¼šSIPå®¢æˆ·ç«¯æ³¨å†Œå¤±è´¥
         // Method: REGISTER
         // Type: Response
-        // Translate: ÊÕµ½ÉÏ¼¶Æ½Ì¨µÄ 3456xx ×¢²áÊ§°Ü
+        // Translate: æ”¶åˆ°ä¸Šçº§å¹³å°çš„ 3456xx æ³¨å†Œå¤±è´¥
         break;
 
-    case EXOSIP_CALL_INVITE:             // ÊÕµ½INVITEÇëÇó£ºÓĞĞÂµÄºô½ĞÇëÇó
+    case EXOSIP_CALL_INVITE:             // æ”¶åˆ°INVITEè¯·æ±‚ï¼šæœ‰æ–°çš„å‘¼å«è¯·æ±‚
         // Method: INVITE
         // Type: Request
-        // Translate: ÊÕµ½ÉÏ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó
+        // Translate: æ”¶åˆ°ä¸Šçº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚
         this->Response_INVITE(pSipEvt);
         break;
 
-    case EXOSIP_CALL_REINVITE:           // ÊÕµ½RE-INVITEÇëÇó£º¶ÔÏÖÓĞºô½ĞµÄÖØĞÂÑûÇë
+    case EXOSIP_CALL_REINVITE:           // æ”¶åˆ°RE-INVITEè¯·æ±‚ï¼šå¯¹ç°æœ‰å‘¼å«çš„é‡æ–°é‚€è¯·
         // Method: INVITE
         // Type: Request
-        // Translate: GB28181 ÎŞ¶à·½Í¨»°£¬ËùÒÔÎŞ´ËÇé¿ö
+        // Translate: GB28181 æ— å¤šæ–¹é€šè¯ï¼Œæ‰€ä»¥æ— æ­¤æƒ…å†µ
         break;
 
-    case EXOSIP_CALL_NOANSWER:           // ºô½ĞÎ´±»ÏìÓ¦£º¶Ô·½Î´½ÓÌı
+    case EXOSIP_CALL_NOANSWER:           // å‘¼å«æœªè¢«å“åº”ï¼šå¯¹æ–¹æœªæ¥å¬
         // Method: NONE(INVITE)
         // Type: Event
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇóÎŞÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚æ— å“åº”
         break;
 
-    case EXOSIP_CALL_PROCEEDING:         // ºô½ĞÕıÔÚ½øĞĞ£º¶Ô·½ÒÑÏìÓ¦µ«ÉĞÎ´½ÓÌı
+    case EXOSIP_CALL_PROCEEDING:         // å‘¼å«æ­£åœ¨è¿›è¡Œï¼šå¯¹æ–¹å·²å“åº”ä½†å°šæœªæ¥å¬
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 1xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 1xx å“åº”
         break;
 
-    case EXOSIP_CALL_RINGING:            // ºô½ĞÕıÔÚÕñÁå£º¶Ô·½ÒÑÏìÓ¦²¢ÕıÔÚÕñÁå
+    case EXOSIP_CALL_RINGING:            // å‘¼å«æ­£åœ¨æŒ¯é“ƒï¼šå¯¹æ–¹å·²å“åº”å¹¶æ­£åœ¨æŒ¯é“ƒ
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 1xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 1xx å“åº”
         break;
 
-    case EXOSIP_CALL_ANSWERED: {           // ºô½ĞÒÑ½ÓÌı£º¶Ô·½ÒÑÏìÓ¦²¢½ÓÌı
+    case EXOSIP_CALL_ANSWERED: {           // å‘¼å«å·²æ¥å¬ï¼šå¯¹æ–¹å·²å“åº”å¹¶æ¥å¬
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 2xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 2xx å“åº”
         this->Response_INVITE_ACK(pSipEvt);
         break;
     }
-    case EXOSIP_CALL_REDIRECTED:         // ºô½Ğ±»ÖØ¶¨Ïò£ººô½Ğ±»×ª·¢µ½ÆäËûµØÖ·
+    case EXOSIP_CALL_REDIRECTED:         // å‘¼å«è¢«é‡å®šå‘ï¼šå‘¼å«è¢«è½¬å‘åˆ°å…¶ä»–åœ°å€
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 3xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 3xx å“åº”
         break;
 
-    case EXOSIP_CALL_REQUESTFAILURE:     // ºô½ĞÇëÇóÊ§°Ü£º¿ÉÄÜÊÇÓÉÓÚÍøÂçÎÊÌâ»òÆäËûÔ­Òò
+    case EXOSIP_CALL_REQUESTFAILURE:     // å‘¼å«è¯·æ±‚å¤±è´¥ï¼šå¯èƒ½æ˜¯ç”±äºç½‘ç»œé—®é¢˜æˆ–å…¶ä»–åŸå› 
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 4xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 4xx å“åº”
         break;
 
-    case EXOSIP_CALL_SERVERFAILURE:      // ºô½ĞÊ§°Ü£º·şÎñÆ÷¶Ë³öÏÖÎÊÌâ
+    case EXOSIP_CALL_SERVERFAILURE:      // å‘¼å«å¤±è´¥ï¼šæœåŠ¡å™¨ç«¯å‡ºç°é—®é¢˜
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 5xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 5xx å“åº”
         break;
 
-    case EXOSIP_CALL_GLOBALFAILURE:      // ºô½ĞÊ§°Ü£ºÈ«¾ÖĞÔÎÊÌâ£¨Èç²»¿É´ï£©
+    case EXOSIP_CALL_GLOBALFAILURE:      // å‘¼å«å¤±è´¥ï¼šå…¨å±€æ€§é—®é¢˜ï¼ˆå¦‚ä¸å¯è¾¾ï¼‰
         // Method: INVITE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ INVITE ÇëÇó 6xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ INVITE è¯·æ±‚ 6xx å“åº”
         break;
 
-    case EXOSIP_CALL_ACK:                // ÊÕµ½ACKÈ·ÈÏ£º¶Ô·½ÒÑ½ÓÌı²¢È·ÈÏ
+    case EXOSIP_CALL_ACK:                // æ”¶åˆ°ACKç¡®è®¤ï¼šå¯¹æ–¹å·²æ¥å¬å¹¶ç¡®è®¤
         // Method: ACK
         // Type: Request
-        // Translate: ÊÕµ½ÏÂ¼¶Æ½Ì¨·¢ËÍµÄ ACK ÇëÇó
+        // Translate: æ”¶åˆ°ä¸‹çº§å¹³å°å‘é€çš„ ACK è¯·æ±‚
         break;
 
-    case EXOSIP_CALL_CANCELLED:          // ºô½Ğ±»È¡Ïû£º¿ÉÄÜÊÇÓÉÖ÷½Ğ·½·¢Æğ
+    case EXOSIP_CALL_CANCELLED:          // å‘¼å«è¢«å–æ¶ˆï¼šå¯èƒ½æ˜¯ç”±ä¸»å«æ–¹å‘èµ·
         // Method: NONE
         // Type: Event
-        // Translate: GB28181 ÎŞ¶à·½Í¨»°£¬ËùÒÔÎŞ´ËÇé¿ö
+        // Translate: GB28181 æ— å¤šæ–¹é€šè¯ï¼Œæ‰€ä»¥æ— æ­¤æƒ…å†µ
         break;
 
-    case EXOSIP_CALL_MESSAGE_NEW:        // ÊÕµ½ĞÂµÄÏûÏ¢
+    case EXOSIP_CALL_MESSAGE_NEW:        // æ”¶åˆ°æ–°çš„æ¶ˆæ¯
         // Method: MESSAGE, BYE, ...
         // Type: Request
-        // Translate: ÊÕµ½ÉÏ¼¶·¢ËÍµÄ MESSAGE ÏûÏ¢(»á»°ÖĞ)
+        // Translate: æ”¶åˆ°ä¸Šçº§å‘é€çš„ MESSAGE æ¶ˆæ¯(ä¼šè¯ä¸­)
         break;
 
-    case EXOSIP_CALL_MESSAGE_PROCEEDING: // ÏûÏ¢ÕıÔÚ´¦ÀíÖĞ
+    case EXOSIP_CALL_MESSAGE_PROCEEDING: // æ¶ˆæ¯æ­£åœ¨å¤„ç†ä¸­
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 1xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 1xx å“åº”
         break;
 
-    case EXOSIP_CALL_MESSAGE_ANSWERED:   // ÏûÏ¢ÒÑ±»ÏìÓ¦
+    case EXOSIP_CALL_MESSAGE_ANSWERED:   // æ¶ˆæ¯å·²è¢«å“åº”
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 2xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 2xx å“åº”
         if (MSG_IS_BYE(pSipEvt->request)) {
             this->Response_INVITE_BYE(pSipEvt);
         }
         break;
 
-    case EXOSIP_CALL_MESSAGE_REDIRECTED: // ÏûÏ¢±»ÖØ¶¨Ïò
+    case EXOSIP_CALL_MESSAGE_REDIRECTED: // æ¶ˆæ¯è¢«é‡å®šå‘
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 3xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 3xx å“åº”
         break;
 
-    case EXOSIP_CALL_MESSAGE_REQUESTFAILURE: // ÏûÏ¢ÇëÇóÊ§°Ü
+    case EXOSIP_CALL_MESSAGE_REQUESTFAILURE: // æ¶ˆæ¯è¯·æ±‚å¤±è´¥
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 4xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 4xx å“åº”
         break;
 
-    case EXOSIP_CALL_MESSAGE_SERVERFAILURE: // ÏûÏ¢Ê§°Ü£º·şÎñÆ÷¶ËÎÊÌâ
+    case EXOSIP_CALL_MESSAGE_SERVERFAILURE: // æ¶ˆæ¯å¤±è´¥ï¼šæœåŠ¡å™¨ç«¯é—®é¢˜
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 5xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 5xx å“åº”
         break;
 
-    case EXOSIP_CALL_MESSAGE_GLOBALFAILURE: // ÏûÏ¢Ê§°Ü£ºÈ«¾ÖĞÔÎÊÌâ
+    case EXOSIP_CALL_MESSAGE_GLOBALFAILURE: // æ¶ˆæ¯å¤±è´¥ï¼šå…¨å±€æ€§é—®é¢˜
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ MESSAGE ÇëÇó(»á»°ÖĞ) 6xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ MESSAGE è¯·æ±‚(ä¼šè¯ä¸­) 6xx å“åº”
         break;
 
-    case EXOSIP_CALL_CLOSED:             // ºô½ĞÒÑ¹Ø±Õ£º¿ÉÄÜÊÇÒòÎªÕı³£½áÊø»ò³¬Ê±
+    case EXOSIP_CALL_CLOSED:             // å‘¼å«å·²å…³é—­ï¼šå¯èƒ½æ˜¯å› ä¸ºæ­£å¸¸ç»“æŸæˆ–è¶…æ—¶
         // Method: BYE
         // Type: Request
-        // Translate: ÊÕµ½ÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ BYE ÇëÇó
+        // Translate: æ”¶åˆ°ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ BYE è¯·æ±‚
         break;
 
-    case EXOSIP_CALL_RELEASED:           // ºô½ĞÒÑÊÍ·Å£º×ÊÔ´ÒÑÇåÀí
+    case EXOSIP_CALL_RELEASED:           // å‘¼å«å·²é‡Šæ”¾ï¼šèµ„æºå·²æ¸…ç†
         // Method: NONE
         // Type: Event
-        // Translate: »á»°ÊÍ·Å
+        // Translate: ä¼šè¯é‡Šæ”¾
         break;
 
-    case EXOSIP_MESSAGE_NEW:             // ÊÕµ½ĞÂµÄSIPÏûÏ¢ÇëÇó
+    case EXOSIP_MESSAGE_NEW:             // æ”¶åˆ°æ–°çš„SIPæ¶ˆæ¯è¯·æ±‚
         // Method: MESSAGE, REGISTER, NOTIFY
         // Type: Request
-        // Translate: ÊÕµ½ÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÏûÏ¢
+        // Translate: æ”¶åˆ°ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE æ¶ˆæ¯
         if (MSG_IS_REGISTER(pSipEvt->request)) {
             this->Response_REGISTER(pSipEvt);
         }
@@ -327,145 +327,145 @@ void SipServer::EventHandle(eXosip_event_t* pSipEvt)
         }
         break;
 
-    case EXOSIP_MESSAGE_PROCEEDING:      // ÏûÏ¢ÕıÔÚ´¦ÀíÖĞ£¬ÒÑ·¢ËÍÏìÓ¦µ«ÉĞÎ´Íê³É
+    case EXOSIP_MESSAGE_PROCEEDING:      // æ¶ˆæ¯æ­£åœ¨å¤„ç†ä¸­ï¼Œå·²å‘é€å“åº”ä½†å°šæœªå®Œæˆ
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 1xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 1xx å“åº”
         break;
 
-    case EXOSIP_MESSAGE_ANSWERED:        // ÏûÏ¢ÒÑ±»³É¹¦ÏìÓ¦£¨ÀıÈç£¬¶Ô·½ÒÑ»Ø¸´£©
+    case EXOSIP_MESSAGE_ANSWERED:        // æ¶ˆæ¯å·²è¢«æˆåŠŸå“åº”ï¼ˆä¾‹å¦‚ï¼Œå¯¹æ–¹å·²å›å¤ï¼‰
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 2xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 2xx å“åº”
         break;
 
-    case EXOSIP_MESSAGE_REDIRECTED:      // ÏûÏ¢±»ÖØ¶¨Ïòµ½ÆäËûµØÖ·»òÄ¿±ê
+    case EXOSIP_MESSAGE_REDIRECTED:      // æ¶ˆæ¯è¢«é‡å®šå‘åˆ°å…¶ä»–åœ°å€æˆ–ç›®æ ‡
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 3xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 3xx å“åº”
         break;
 
-    case EXOSIP_MESSAGE_REQUESTFAILURE:  // ÏûÏ¢ÇëÇóÊ§°Ü£¬¿ÉÄÜÊÇÓÉÓÚ¿Í»§¶Ë´íÎó£¨Èç4xxÏìÓ¦£©
+    case EXOSIP_MESSAGE_REQUESTFAILURE:  // æ¶ˆæ¯è¯·æ±‚å¤±è´¥ï¼Œå¯èƒ½æ˜¯ç”±äºå®¢æˆ·ç«¯é”™è¯¯ï¼ˆå¦‚4xxå“åº”ï¼‰
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 4xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 4xx å“åº”
         break;
 
-    case EXOSIP_MESSAGE_SERVERFAILURE:   // ÏûÏ¢´¦ÀíÊ§°Ü£¬¿ÉÄÜÊÇÓÉÓÚ·şÎñÆ÷´íÎó£¨Èç5xxÏìÓ¦£©
+    case EXOSIP_MESSAGE_SERVERFAILURE:   // æ¶ˆæ¯å¤„ç†å¤±è´¥ï¼Œå¯èƒ½æ˜¯ç”±äºæœåŠ¡å™¨é”™è¯¯ï¼ˆå¦‚5xxå“åº”ï¼‰
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 5xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 5xx å“åº”
         break;
 
-    case EXOSIP_MESSAGE_GLOBALFAILURE:   // ÏûÏ¢Ê§°Ü£¬È«¾ÖĞÔÎÊÌâ£¨ÈçÍøÂç²»¿É´ï£¬6xxÏìÓ¦£©
+    case EXOSIP_MESSAGE_GLOBALFAILURE:   // æ¶ˆæ¯å¤±è´¥ï¼Œå…¨å±€æ€§é—®é¢˜ï¼ˆå¦‚ç½‘ç»œä¸å¯è¾¾ï¼Œ6xxå“åº”ï¼‰
         // Method: MESSAGE
         // Type: Response
-        // Translate: ÏòÉÏ¼¶»òÕßÏÂ¼¶·¢ËÍµÄ MESSAGE ÇëÇó 6xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§æˆ–è€…ä¸‹çº§å‘é€çš„ MESSAGE è¯·æ±‚ 6xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_NOANSWER:   // ¶©ÔÄÇëÇóÎ´±»ÏìÓ¦
+    case EXOSIP_SUBSCRIPTION_NOANSWER:   // è®¢é˜…è¯·æ±‚æœªè¢«å“åº”
         // Method: NONE(SUBSCRIPTION)
         // Type: Event
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇóÎŞÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚æ— å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_PROCEEDING: // ¶©ÔÄÇëÇóÕıÔÚ´¦ÀíÖĞ
+    case EXOSIP_SUBSCRIPTION_PROCEEDING: // è®¢é˜…è¯·æ±‚æ­£åœ¨å¤„ç†ä¸­
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 1xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 1xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_ANSWERED:   // ¶©ÔÄÇëÇóÒÑ±»ÏìÓ¦
+    case EXOSIP_SUBSCRIPTION_ANSWERED:   // è®¢é˜…è¯·æ±‚å·²è¢«å“åº”
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 2xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 2xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_REDIRECTED: // ¶©ÔÄÇëÇó±»ÖØ¶¨Ïò
+    case EXOSIP_SUBSCRIPTION_REDIRECTED: // è®¢é˜…è¯·æ±‚è¢«é‡å®šå‘
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 3xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 3xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_REQUESTFAILURE: // ¶©ÔÄÇëÇóÊ§°Ü
+    case EXOSIP_SUBSCRIPTION_REQUESTFAILURE: // è®¢é˜…è¯·æ±‚å¤±è´¥
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 4xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 4xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_SERVERFAILURE: // ¶©ÔÄÊ§°Ü£º·şÎñÆ÷¶ËÎÊÌâ
+    case EXOSIP_SUBSCRIPTION_SERVERFAILURE: // è®¢é˜…å¤±è´¥ï¼šæœåŠ¡å™¨ç«¯é—®é¢˜
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 5xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 5xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_GLOBALFAILURE: // ¶©ÔÄÊ§°Ü£ºÈ«¾ÖĞÔÎÊÌâ
+    case EXOSIP_SUBSCRIPTION_GLOBALFAILURE: // è®¢é˜…å¤±è´¥ï¼šå…¨å±€æ€§é—®é¢˜
         // Method: SUBSCRIPTION
         // Type: Response
-        // Translate: ÏòÏÂ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó 6xx ÏìÓ¦
+        // Translate: å‘ä¸‹çº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚ 6xx å“åº”
         break;
 
-    case EXOSIP_SUBSCRIPTION_NOTIFY:     // ÊÕµ½Í¨Öª£º¶©ÔÄÄÚÈİÓĞ¸üĞÂ
+    case EXOSIP_SUBSCRIPTION_NOTIFY:     // æ”¶åˆ°é€šçŸ¥ï¼šè®¢é˜…å†…å®¹æœ‰æ›´æ–°
         // Method: NOTIFY
         // Type: Request
-        // Translate: ÊÕµ½ÏÂ¼¶Æ½Ì¨·¢ËÍµÄ NOTIFY ÇëÇó
+        // Translate: æ”¶åˆ°ä¸‹çº§å¹³å°å‘é€çš„ NOTIFY è¯·æ±‚
         break;
 
-    case EXOSIP_IN_SUBSCRIPTION_NEW:     // ÊÕµ½ĞÂµÄ¶©ÔÄÇëÇó
+    case EXOSIP_IN_SUBSCRIPTION_NEW:     // æ”¶åˆ°æ–°çš„è®¢é˜…è¯·æ±‚
         // Method: SUBSCRIBE
         // Type: Request
-        // Translate: ÊÕµ½ÉÏ¼¶Æ½Ì¨·¢ËÍµÄ SUBSCRIBE/REFER ÇëÇó
+        // Translate: æ”¶åˆ°ä¸Šçº§å¹³å°å‘é€çš„ SUBSCRIBE/REFER è¯·æ±‚
         break;
 
-    case EXOSIP_NOTIFICATION_NOANSWER:   // Í¨ÖªÎ´±»ÏìÓ¦
+    case EXOSIP_NOTIFICATION_NOANSWER:   // é€šçŸ¥æœªè¢«å“åº”
         // Method: NONE(NOTIFY)
         // Type: Event
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇóÎŞÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚æ— å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_PROCEEDING: // Í¨ÖªÕıÔÚ´¦ÀíÖĞ
+    case EXOSIP_NOTIFICATION_PROCEEDING: // é€šçŸ¥æ­£åœ¨å¤„ç†ä¸­
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 1xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 1xx å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_ANSWERED:   // Í¨ÖªÒÑ±»ÏìÓ¦
+    case EXOSIP_NOTIFICATION_ANSWERED:   // é€šçŸ¥å·²è¢«å“åº”
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 2xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 2xx å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_REDIRECTED: // Í¨Öª±»ÖØ¶¨Ïò
+    case EXOSIP_NOTIFICATION_REDIRECTED: // é€šçŸ¥è¢«é‡å®šå‘
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 3xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 3xx å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_REQUESTFAILURE: // Í¨ÖªÇëÇóÊ§°Ü
+    case EXOSIP_NOTIFICATION_REQUESTFAILURE: // é€šçŸ¥è¯·æ±‚å¤±è´¥
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 4xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 4xx å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_SERVERFAILURE: // Í¨ÖªÊ§°Ü£º·şÎñÆ÷¶ËÎÊÌâ
+    case EXOSIP_NOTIFICATION_SERVERFAILURE: // é€šçŸ¥å¤±è´¥ï¼šæœåŠ¡å™¨ç«¯é—®é¢˜
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 5xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 5xx å“åº”
         break;
 
-    case EXOSIP_NOTIFICATION_GLOBALFAILURE: // Í¨ÖªÊ§°Ü£ºÈ«¾ÖĞÔÎÊÌâ
+    case EXOSIP_NOTIFICATION_GLOBALFAILURE: // é€šçŸ¥å¤±è´¥ï¼šå…¨å±€æ€§é—®é¢˜
         // Method: NOTIFY
         // Type: Response
-        // Translate: ÏòÉÏ¼¶Æ½Ì¨·¢ËÍµÄ Notify ÇëÇó 6xx ÏìÓ¦
+        // Translate: å‘ä¸Šçº§å¹³å°å‘é€çš„ Notify è¯·æ±‚ 6xx å“åº”
         break;
 
-    case EXOSIP_EVENT_COUNT:             // ÊÂ¼ş×ÜÊı£ºÍ¨³£ÓÃÓÚÄÚ²¿Í³¼Æ
+    case EXOSIP_EVENT_COUNT:             // äº‹ä»¶æ€»æ•°ï¼šé€šå¸¸ç”¨äºå†…éƒ¨ç»Ÿè®¡
         // Method: NONE
         // Type: None
-        // Translate: ÊÂ¼ş×î´óÖµ
+        // Translate: äº‹ä»¶æœ€å¤§å€¼
         break;
 
-    default:                             // Ä¬ÈÏ·ÖÖ§£º´¦ÀíÎ´ÖªÊÂ¼şÀàĞÍ
+    default:                             // é»˜è®¤åˆ†æ”¯ï¼šå¤„ç†æœªçŸ¥äº‹ä»¶ç±»å‹
         break;
     }
 }
@@ -508,39 +508,39 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     osip_authorization_t* pAuth = nullptr;
     osip_message_get_authorization(pSipEvt->request, 0, &pAuth);
 
-    //Èç¹ûÈ±·¦À´Ô´AuthorizationĞÅÏ¢Ôò½øÈë×¢²á/×¢ÏúĞÅÏ¢ÏìÓ¦¹¹½¨
+    //å¦‚æœç¼ºä¹æ¥æºAuthorizationä¿¡æ¯åˆ™è¿›å…¥æ³¨å†Œ/æ³¨é”€ä¿¡æ¯å“åº”æ„å»º
     if (nullptr == pAuth || nullptr == pAuth->username) {
         Response_REGISTER_401unauthorized(pSipEvt);
         return;
     }
 
-    //×¢Òâ×Ö·û´®´¦ÀíµÄ·½·¨£¬ÄÚ²¿ÉêÇëÁËÄÚ´æ£¬ÓÃÍê¼ÇµÃÊÍ·Å£¬±ÜÃâÄÚ´æĞ¹Â¶
+    //æ³¨æ„å­—ç¬¦ä¸²å¤„ç†çš„æ–¹æ³•ï¼Œå†…éƒ¨ç”³è¯·äº†å†…å­˜ï¼Œç”¨å®Œè®°å¾—é‡Šæ”¾ï¼Œé¿å…å†…å­˜æ³„éœ²
     char* method = pSipEvt->request->sip_method; // REGISTER
-    //ÌáÈ¡×Ö·û´®²¢Ïû³ıÆäÖĞµÄË«ÒıºÅ
+    //æå–å­—ç¬¦ä¸²å¹¶æ¶ˆé™¤å…¶ä¸­çš„åŒå¼•å·
 #define SIP_strdup(FIELD) char* FIELD = NULL; if (pAuth->FIELD) (FIELD) = osip_strdup_without_quote(pAuth->FIELD)
     SIP_strdup(algorithm); // MD5
-    SIP_strdup(username); // SIPÓÃ»§Ãû
-    SIP_strdup(realm); // sip·şÎñÆ÷´«¸ø¿Í»§¶Ë£¬¿Í»§¶ËĞ¯´ø²¢Ìá½»ÉÏÀ´µÄsip·şÎñÓò
-    SIP_strdup(nonce); // sip·şÎñÆ÷´«¸ø¿Í»§¶Ë£¬¿Í»§¶ËĞ¯´ø²¢Ìá½»ÉÏÀ´µÄnonce
+    SIP_strdup(username); // SIPç”¨æˆ·å
+    SIP_strdup(realm); // sipæœåŠ¡å™¨ä¼ ç»™å®¢æˆ·ç«¯ï¼Œå®¢æˆ·ç«¯æºå¸¦å¹¶æäº¤ä¸Šæ¥çš„sipæœåŠ¡åŸŸ
+    SIP_strdup(nonce); // sipæœåŠ¡å™¨ä¼ ç»™å®¢æˆ·ç«¯ï¼Œå®¢æˆ·ç«¯æºå¸¦å¹¶æäº¤ä¸Šæ¥çš„nonce
     SIP_strdup(nonce_count);
     SIP_strdup(uri);
-    SIP_strdup(response); // ¿Í»§¶Ë¼ÆËãÉú³ÉµÄÈÏÖ¤×Ö·û´®
-    SIP_strdup(cnonce); // ¿Í»§¶ËÉú³ÉµÄËæ»úÊı
+    SIP_strdup(response); // å®¢æˆ·ç«¯è®¡ç®—ç”Ÿæˆçš„è®¤è¯å­—ç¬¦ä¸²
+    SIP_strdup(cnonce); // å®¢æˆ·ç«¯ç”Ÿæˆçš„éšæœºæ•°
     SIP_strdup(message_qop);
 #undef SIP_strdup
 
-    //ÌáÈ¡ÇëÇóÖĞµÄ½»»¥ĞÅÏ¢²¢hash
+    //æå–è¯·æ±‚ä¸­çš„äº¤äº’ä¿¡æ¯å¹¶hash
     HASHHEX hashResponse = "";
     {
         const char* password = m_serverInfo.sPwd.c_str();
-        //ÕâÀïĞèÒªÊ¹ÓÃ¿Í»§¶ËµÄÕËºÅÃÜÂëÈÏÖ¤£¬ËùÒÔÒ»°ãÇé¿öÊÇĞèÒªÔÚsipĞ­ÒéÒÔÍâÔÚ·şÎñ¶Ë×¢²áµÇÂ¼µÄÕËºÅÃÜÂëĞÅÏ¢
+        //è¿™é‡Œéœ€è¦ä½¿ç”¨å®¢æˆ·ç«¯çš„è´¦å·å¯†ç è®¤è¯ï¼Œæ‰€ä»¥ä¸€èˆ¬æƒ…å†µæ˜¯éœ€è¦åœ¨sipåè®®ä»¥å¤–åœ¨æœåŠ¡ç«¯æ³¨å†Œç™»å½•çš„è´¦å·å¯†ç ä¿¡æ¯
         HASHHEX hash1 = "", hash2 = "";
         DigestCalcHA1(algorithm, username, realm, password, nonce, nonce_count, hash1);
         DigestCalcResponse(hash1, nonce, nonce_count, cnonce, message_qop, 0, method, uri, hash2, hashResponse);
         LOGI("hashCalc hash1=%s response=%s", hash1, hashResponse);
     }
 
-    //ÌáÈ¡Ö÷»ú¶Ë¿ÚÓÃ»§ÃûĞÅÏ¢
+    //æå–ä¸»æœºç«¯å£ç”¨æˆ·åä¿¡æ¯
     osip_contact_t* pContact = nullptr;
     osip_message_get_contact(pSipEvt->request, 0, &pContact);
 
@@ -549,27 +549,27 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     clientInfo.sIp = pContact->url->host;
     clientInfo.iPort = atoi(pContact->url->port);
 
-    //hashÑéÖ¤£¬ÑéÖ¤½»»¥ĞÅÏ¢Ò»ÖÂĞÔ
-    if (response && 0 == memcmp(hashResponse, response, HASHHEXLEN)) {//Ò»ÖÂÔò×¢²á/×¢Ïú´ËÓÃ»§
+    //hashéªŒè¯ï¼ŒéªŒè¯äº¤äº’ä¿¡æ¯ä¸€è‡´æ€§
+    if (response && 0 == memcmp(hashResponse, response, HASHHEXLEN)) {//ä¸€è‡´åˆ™æ³¨å†Œ/æ³¨é”€æ­¤ç”¨æˆ·
         int iExpires = -1;
         osip_header_t* stExpires = nullptr;
         osip_message_get_expires(pSipEvt->request, 0, &stExpires);  
         LOGI("Expires:%s,%s", stExpires->hname, stExpires->hvalue);
         if (0 == atoi(stExpires->hvalue)) {
-            //×¢Ïú
+            //æ³¨é”€
             LOGI("unregister success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            this->MessageSendAnswer(pSipEvt, 200);//Í¨ÖªÉãÏñÍ·×¢ÏúÍ¨¹ı
+            this->MessageSendAnswer(pSipEvt, 200);//é€šçŸ¥æ‘„åƒå¤´æ³¨é”€é€šè¿‡
         }
         else {
             LOGI("register success,ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-            this->MessageSendAnswer(pSipEvt, 200);//Í¨ÖªÉãÏñÍ·×¢²áÍ¨¹ı
+            this->MessageSendAnswer(pSipEvt, 200);//é€šçŸ¥æ‘„åƒå¤´æ³¨å†Œé€šè¿‡
             if (m_pSipEvent)
                 m_pSipEvent->OnRegister(clientInfo);
         }
     }
-    else {//·ñÔò²»Óè¼ÓÈë
+    else {//å¦åˆ™ä¸äºˆåŠ å…¥
         LOGI("register error, ip=%s,port=%d,device=%s", pContact->url->host, atoi(pContact->url->port), _strdup(username));
-        this->MessageSendAnswer(pSipEvt, 401);//×¢²á/×¢ÏúÊ§°Ü
+        this->MessageSendAnswer(pSipEvt, 401);//æ³¨å†Œ/æ³¨é”€å¤±è´¥
     }
 
     osip_free(algorithm);
@@ -585,7 +585,7 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
 
 void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
 {
-    //ÕâÀïĞèÒª¹¹½¨Ò»¸öÈçÏÂµÄÏûÏ¢Ìå
+    //è¿™é‡Œéœ€è¦æ„å»ºä¸€ä¸ªå¦‚ä¸‹çš„æ¶ˆæ¯ä½“
     //WWW-Authenticate: Digest realm="3402000000", nonce="1762863282", algorithm=MD5, qop="auth" 
 
     char nonce[64] = {0};
@@ -593,25 +593,25 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
 
     char* pDest = nullptr;
     osip_www_authenticate_t* pHeader = nullptr;
-    osip_www_authenticate_init(&pHeader);//¹¹½¨WWW-AuthenticateÏìÓ¦Í·
-    osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//ÉèÖÃÈÏÖ¤ÀàĞÍ
-    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sRealm.c_str()));//Ìá¹©ÈÏÖ¤ÓÃµÄSIP·şÎñÆ÷Óò
-    osip_www_authenticate_set_nonce(pHeader, osip_enquote(nonce));//Ìá¹©ÈÏÖ¤ÓÃµÄSIP·şÎñËæ»úÊıÖµ
+    osip_www_authenticate_init(&pHeader);//æ„å»ºWWW-Authenticateå“åº”å¤´
+    osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//è®¾ç½®è®¤è¯ç±»å‹
+    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sRealm.c_str()));//æä¾›è®¤è¯ç”¨çš„SIPæœåŠ¡å™¨åŸŸ
+    osip_www_authenticate_set_nonce(pHeader, osip_enquote(nonce));//æä¾›è®¤è¯ç”¨çš„SIPæœåŠ¡éšæœºæ•°å€¼
     osip_www_authenticate_set_algorithm(pHeader, osip_strdup("MD5"));
-    osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//ÕâÀïÒª¼ÓË«ÒıºÅ
-    osip_www_authenticate_to_str(pHeader, &pDest);//½«ÏìÓ¦Í·µÄÄÚÈİÊä³ö³É×Ö·û´®
+    osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//è¿™é‡Œè¦åŠ åŒå¼•å·
+    osip_www_authenticate_to_str(pHeader, &pDest);//å°†å“åº”å¤´çš„å†…å®¹è¾“å‡ºæˆå­—ç¬¦ä¸²
     osip_message_t* pMsg = nullptr;
-    int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//¹¹½¨Ò»¸öÏìÓ¦
+    int iRet = eXosip_message_build_answer(m_pSipCtx, pSipEvt->tid, 401, &pMsg);//æ„å»ºä¸€ä¸ªå“åº”
     if (OSIP_SUCCESS != iRet || !pMsg) {
         LOGE("eXosip_message_build_answer failed:%d", iRet);
     }
 
-    iRet = osip_message_set_www_authenticate(pMsg, pDest);//½«ÏìÓ¦Í·×Ö·û´®Ìí¼Óµ½ÏìÓ¦ĞÅÏ¢ÖĞ
+    iRet = osip_message_set_www_authenticate(pMsg, pDest);//å°†å“åº”å¤´å­—ç¬¦ä¸²æ·»åŠ åˆ°å“åº”ä¿¡æ¯ä¸­
     if (OSIP_SUCCESS != iRet) {
         LOGE("osip_message_set_www_authenticate failed:%d", iRet);
     }
 
-    iRet = osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//ÉèÖÃÏìÓ¦ÏûÏ¢µÄÄÚÈİÀàĞÍ
+    iRet = osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//è®¾ç½®å“åº”æ¶ˆæ¯çš„å†…å®¹ç±»å‹
     if (OSIP_SUCCESS != iRet) {
         LOGE("osip_message_set_content_type failed:%d", iRet);
     }
@@ -619,14 +619,14 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
     //this->DumpMessage(pMsg);
 
     eXosip_lock(m_pSipCtx);
-    iRet = eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, 401, pMsg);//·¢ËÍÏìÓ¦
+    iRet = eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, 401, pMsg);//å‘é€å“åº”
     eXosip_unlock(m_pSipCtx);
     if (OSIP_SUCCESS != iRet) {
         LOGE("eXosip_message_send_answer failed:%d", iRet);
     }
     LOGI("response_register_401unauthorized success");
 
-    //»ØÊÕ×ÊÔ´
+    //å›æ”¶èµ„æº
     osip_www_authenticate_free(pHeader);
     osip_free(pDest);
 }
@@ -634,7 +634,7 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
 void SipServer::Response_MESSAGE(eXosip_event_t* pSipEvt)
 {
     this->MessageSendAnswer(pSipEvt, 200);
-    //ÌáÈ¡Ö÷»ú¶Ë¿ÚÓÃ»§ÃûĞÅÏ¢
+    //æå–ä¸»æœºç«¯å£ç”¨æˆ·åä¿¡æ¯
     osip_contact_t* pContact = nullptr;
     osip_message_get_contact(pSipEvt->request, 0, &pContact);
 
@@ -709,7 +709,7 @@ void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
 
 void SipServer::Response_INVITE_ACK(eXosip_event_t* pSipEvt)
 {
-    //´ËÊ±ÊÕµ½INVITEµÄ200»Ø¸´ËµÃ÷»á»°½¨Á¢³É¹¦
+    //æ­¤æ—¶æ”¶åˆ°INVITEçš„200å›å¤è¯´æ˜ä¼šè¯å»ºç«‹æˆåŠŸ
     auto iter = m_mapCall.find(pSipEvt->cid);
     if (iter == m_mapCall.end())
         return;
@@ -746,13 +746,13 @@ void SipServer::MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus)
     if (iRet == 0 && pMsg != nullptr)
     {
         eXosip_lock(m_pSipCtx);
-        eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, iStatus, pMsg);//·¢ËÍÏìÓ¦
+        eXosip_message_send_answer(m_pSipCtx, pSipEvt->tid, iStatus, pMsg);//å‘é€å“åº”
         eXosip_unlock(m_pSipCtx);
     }
     else {
         LOGE("MessageSendAnswer error iStatus=%d,iRet=%d,pMsg=%d", iStatus, iRet, pMsg != nullptr);
     }
-    //osip_message_free(pMsg);//·¢ËÍ²Ù×÷ÊÇ½«ÏûÏ¢¶ÔÏóÈÓµ½Ïß³Ì¶ÓÁĞ£¬ÕâÀï²»ÄÜÖ±½ÓÊÍ·ÅÏûÏ¢ÄÚ´æ
+    //osip_message_free(pMsg);//å‘é€æ“ä½œæ˜¯å°†æ¶ˆæ¯å¯¹è±¡æ‰”åˆ°çº¿ç¨‹é˜Ÿåˆ—ï¼Œè¿™é‡Œä¸èƒ½ç›´æ¥é‡Šæ”¾æ¶ˆæ¯å†…å­˜
 }
 
 int SipServer::Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options)
@@ -778,7 +778,7 @@ int SipServer::Request_INVITE(const ClientInfo& clientInfo, const InviteOptions&
     //char sSessionExp[1024] = { 0 };
     //snprintf(sSessionExp, sizeof(sSessionExp) - 1, "%i;refresher=uac", kTimeout);
     //osip_message_set_header(pMsg, "Session-Expires", sSessionExp);
-    //osip_message_set_supported(pMsg, "timer"); //»á»°¼ÆÊ±Æ÷
+    //osip_message_set_supported(pMsg, "timer"); //ä¼šè¯è®¡æ—¶å™¨
 
     int iCallId = eXosip_call_send_initial_invite(m_pSipCtx, pMsg);
     if (iCallId > 0) {
@@ -829,11 +829,11 @@ int SipServer::Request_BYE(const ClientInfo& clientInfo)
     //osip_call_id_set_number(cid, osip_strdup(sCallId));
     //pMsg->call_id = cid;
 
-    // ÉèÖÃ±ØÒªµÄÍ·Óò
+    // è®¾ç½®å¿…è¦çš„å¤´åŸŸ
     //osip_message_set_call_id(pMsg, sCallId);
     //osip_message_set_cseq(pMsg, sCSeq);
 
-    //Ö±½Óµ÷ÓÃÉèÖÃĞèÒªÊÍ·ÅÔ­À´µÄÊı¾İ
+    //ç›´æ¥è°ƒç”¨è®¾ç½®éœ€è¦é‡Šæ”¾åŸæ¥çš„æ•°æ®
     osip_free(pMsg->call_id->number);
     osip_free(pMsg->cseq->number);
 
@@ -846,13 +846,13 @@ int SipServer::Request_BYE(const ClientInfo& clientInfo)
     osip_uri_param_get_byname(&via->via_params, osip_strdup("branch"), &vp);
     vp->gvalue = osip_strdup(sBranch);
 
-    // ÉèÖÃFromºÍTo±êÇ©
+    // è®¾ç½®Fromå’ŒToæ ‡ç­¾
     osip_from_t* from = osip_message_get_from(pMsg);
     osip_to_t* to = osip_message_get_to(pMsg);
     osip_uri_param_t* fp = nullptr;
     osip_uri_param_get_byname(&from->gen_params, osip_strdup("tag"), &fp);
     fp->gvalue = osip_strdup(sFromTag);
-    //²»Ê¹ÓÃosip_strdup»á±ÀÀ£
+    //ä¸ä½¿ç”¨osip_strdupä¼šå´©æºƒ
     if (to) osip_to_set_tag(to, osip_strdup(sToTag));
 
     DumpMessage(pMsg);
@@ -879,11 +879,11 @@ int SipServer::Request_MESSAGE(const ClientInfo& clientInfo, const std::string& 
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
-        //osip_message_free(pMsg);//´´½¨Ê§°ÜÄÚ²¿»áÊÍ·ÅÄÚ´æ£¬ÕâÀï²»ĞèÒªÊÍ·Å
+        //osip_message_free(pMsg);//åˆ›å»ºå¤±è´¥å†…éƒ¨ä¼šé‡Šæ”¾å†…å­˜ï¼Œè¿™é‡Œä¸éœ€è¦é‡Šæ”¾
         return -1;
     }
     osip_message_set_body(pMsg, message.c_str(), message.length());
-    osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//ÉèÖÃÇëÇóÏûÏ¢µÄÄÚÈİÀàĞÍ
+    osip_message_set_content_type(pMsg, "Application/MANSCDP+xml");//è®¾ç½®è¯·æ±‚æ¶ˆæ¯çš„å†…å®¹ç±»å‹
 
     int iCallId = eXosip_message_send_request(m_pSipCtx, pMsg);
     if (iCallId > 0) {
@@ -892,7 +892,7 @@ int SipServer::Request_MESSAGE(const ClientInfo& clientInfo, const std::string& 
     else {
         LOGE("eXosip_message_send_request error: iCallId=%d", iCallId);
     }
-    //osip_message_free(pMsg);//·¢ËÍ²Ù×÷ÊÇ½«ÏûÏ¢¶ÔÏóÈÓµ½Ïß³Ì¶ÓÁĞ£¬ÕâÀï²»ÄÜÖ±½ÓÊÍ·ÅÏûÏ¢ÄÚ´æ
+    //osip_message_free(pMsg);//å‘é€æ“ä½œæ˜¯å°†æ¶ˆæ¯å¯¹è±¡æ‰”åˆ°çº¿ç¨‹é˜Ÿåˆ—ï¼Œè¿™é‡Œä¸èƒ½ç›´æ¥é‡Šæ”¾æ¶ˆæ¯å†…å­˜
     return iCallId;
 }
 
@@ -907,7 +907,7 @@ int SipServer::Request_INFO(const DialogInfo& dlgInfo, const std::string& body)
     int ret = eXosip_call_build_info(m_pSipCtx, dlgInfo.exDialogId, &info);
     if (ret != 0) {
         LOGE("eXosip_call_build_info error: ret=%d", ret);
-        //osip_message_free(info);//´´½¨Ê§°ÜÄÚ²¿»áÊÍ·ÅÄÚ´æ£¬ÕâÀï²»ĞèÒªÊÍ·Å
+        //osip_message_free(info);//åˆ›å»ºå¤±è´¥å†…éƒ¨ä¼šé‡Šæ”¾å†…å­˜ï¼Œè¿™é‡Œä¸éœ€è¦é‡Šæ”¾
         return -1;
     }
 
@@ -915,6 +915,6 @@ int SipServer::Request_INFO(const DialogInfo& dlgInfo, const std::string& body)
     osip_message_set_body(info, body.c_str(), body.length());
     ret = eXosip_call_send_request(m_pSipCtx, dlgInfo.exDialogId, info);
     LOGE("eXosip_call_send_request: ret=%d", ret);
-    //osip_message_free(info);//·¢ËÍ²Ù×÷ÊÇ½«ÏûÏ¢¶ÔÏóÈÓµ½Ïß³Ì¶ÓÁĞ£¬ÕâÀï²»ÄÜÖ±½ÓÊÍ·ÅÏûÏ¢ÄÚ´æ
+    //osip_message_free(info);//å‘é€æ“ä½œæ˜¯å°†æ¶ˆæ¯å¯¹è±¡æ‰”åˆ°çº¿ç¨‹é˜Ÿåˆ—ï¼Œè¿™é‡Œä¸èƒ½ç›´æ¥é‡Šæ”¾æ¶ˆæ¯å†…å­˜
     return ret;
 }

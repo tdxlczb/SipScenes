@@ -25,14 +25,17 @@
     <ClCompile Include="manscdp.cpp" />
     <ClCompile Include="sdp.cpp" />
     <ClCompile Include="stream.cpp" />
+    <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h" />
     <ClInclude Include="device.h" />
+    <ClInclude Include="device_base.h" />
     <ClInclude Include="device_channel.h" />
     <ClInclude Include="manscdp.h" />
     <ClInclude Include="sdp.h" />
     <ClInclude Include="stream.h" />
+    <ClInclude Include="tools.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

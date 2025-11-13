@@ -8,13 +8,13 @@ struct StreamInfo
     std::string ip;
     int port = 0;
     std::string channelId;
-    int streamNumber = 0;//0Ö÷ÂëÁ÷
-    int tcpMode = 0;//0: ²»¼àÌı¶Ë¿Ú 1: ¼àÌı¶Ë¿Ú 2: Ö÷¶¯Á¬½Óµ½·şÎñ¶Ë
+    int streamNumber = 0;//0ä¸»ç æµ
+    int tcpMode = 0;//0: ä¸ç›‘å¬ç«¯å£ 1: ç›‘å¬ç«¯å£ 2: ä¸»åŠ¨è¿æ¥åˆ°æœåŠ¡ç«¯
     std::string startTime; //2025-11-08 00:00:00
     std::string endTime; //2025-11-08 23:59:59
 
-    int controlType = 0;// 1ÔİÍ££¬2»Ö¸´£¬3Ìø×ª£¬4±¶ËÙ
-    int64_t seekTime; //±íÊ¾´ÓstartTimeµÄ¶àÉÙÃëÖ®ºó¿ªÊ¼²¥·Å
+    int controlType = 0;// 1æš‚åœï¼Œ2æ¢å¤ï¼Œ3è·³è½¬ï¼Œ4å€é€Ÿ
+    int64_t seekTime; //è¡¨ç¤ºä»startTimeçš„å¤šå°‘ç§’ä¹‹åå¼€å§‹æ’­æ”¾
     double speed = 1.0;
 };
 
@@ -23,4 +23,5 @@ struct MessageInfo
     std::string deviceId;
     std::string ip;
     int port = 0;
+    bool update = false;
 };

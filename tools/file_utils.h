@@ -16,13 +16,13 @@
 
 class ProcessPath {
 public:
-    // »ñÈ¡µ±Ç°¹¤×÷Ä¿Â¼
+    // è·å–å½“å‰å·¥ä½œç›®å½•
     static std::string GetCurrentWorkingDirectory();
 
-    // »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şÍêÕûÂ·¾¶
+    // è·å–å¯æ‰§è¡Œæ–‡ä»¶å®Œæ•´è·¯å¾„
     static std::string GetExecutablePath();
 
-    // »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şËùÔÚÄ¿Â¼
+    // è·å–å¯æ‰§è¡Œæ–‡ä»¶æ‰€åœ¨ç›®å½•
     static std::string GetExecutableDirectory();
 
 private:

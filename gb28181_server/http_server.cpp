@@ -1,6 +1,5 @@
 #include "http_server.h"
 
-#include "json/json.h"
 #include "tools/log.h"
 #include "tools/config.h"
 #include "gb28181_server.h"
@@ -125,7 +124,7 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         result["code"] = ret;
         result["msg"] = "";
         result["data"] = data;
-        res.set_content(result.toStyledString(), "text/plain");
+        res.set_content(result.toStyledString(), "application/json; charset=utf-8");
         });
 
     m_server.Post("/closeStream", [this](const httplib::Request& req, httplib::Response& res) {
@@ -139,7 +138,7 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         result["code"] = ret;
         result["msg"] = "";
         result["data"] = Json::ValueType::objectValue;
-        res.set_content(result.toStyledString(), "text/plain");
+        res.set_content(result.toStyledString(), "application/json; charset=utf-8");
         });
 
     m_server.Post("/controlStream", [this](const httplib::Request& req, httplib::Response& res) {
@@ -153,21 +152,24 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
         result["code"] = ret;
         result["msg"] = "";
         result["data"] = Json::ValueType::objectValue;
-        res.set_content(result.toStyledString(), "text/plain");
+        res.set_content(result.toStyledString(), "application/json; charset=utf-8");
         });
 
     m_server.Post("/getDeviceList", [this](const httplib::Request& req, httplib::Response& res) {
         MessageInfo info = GetMessageInfo(req.body);
         std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
         int ret = -1;
+        Json::Value deviceListValue = Json::arrayValue;
         if (shared) {
-            ret = shared->GetDeviceList(info);
+            ret = 0;
+            auto deviceList = shared->GetDeviceList(info);
+            deviceListValue = GetDeviceListValue(deviceList);
         }
         Json::Value result;
         result["code"] = ret;
         result["msg"] = "";
-        result["data"] = Json::ValueType::objectValue;
-        res.set_content(result.toStyledString(), "text/plain");
+        result["data"] = deviceListValue;
+        res.set_content(result.toStyledString(), "application/json; charset=utf-8");
         });
 
     m_server.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
@@ -231,5 +233,34 @@ MessageInfo HttpServer::GetMessageInfo(const std::string& body)
     info.deviceId = root.get("deviceId", "").asString();
     info.ip = root.get("ip", "").asString();
     info.port = root.get("port", 0).asInt();
+    info.update = root.get("update", false).asBool();
     return info;
+}
+
+Json::Value HttpServer::GetDeviceListValue(const std::map<std::string, gb28181::Device>& deviceList)
+{
+    Json::Value deviceListValue = Json::arrayValue;
+    for (auto deviceIter = deviceList.begin(); deviceIter != deviceList.end(); ++deviceIter)
+    {
+        gb28181::Device device = deviceIter->second;
+        Json::Value deviceValue;
+        deviceValue["deviceId"] = device.deviceId;
+        deviceValue["channelNum"] = device.channelNum;
+
+        Json::Value channelsValue = Json::arrayValue;     
+        for (auto channelIter = device.channels.begin(); channelIter != device.channels.end(); ++channelIter) {
+            gb28181::DeviceChannel channel = channelIter->second;
+            Json::Value channelValue;
+            channelValue["deviceId"] = channel.deviceId;
+            channelValue["name"] = channel.name;
+            channelValue["parentId"] = channel.parentId;
+            channelValue["ip"] = channel.address;
+
+            channelValue["status"] = channel.status;
+            channelsValue.append(channelValue);
+        }
+        deviceValue["channels"] = channelsValue;
+        deviceListValue.append(deviceValue);
+    }
+    return deviceListValue;
 }

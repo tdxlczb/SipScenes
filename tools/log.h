@@ -11,9 +11,9 @@ static std::string getTime() {
     strftime(arrTime, sizeof(arrTime), sTimeFmt, &stTm);
     return arrTime;
 }
-//  __FILE__ »ñÈ¡Ô´ÎÄ¼şµÄÏà¶ÔÂ·¾¶ºÍÃû×Ö
-//  __LINE__ »ñÈ¡¸ÃĞĞ´úÂëÔÚÎÄ¼şÖĞµÄĞĞºÅ
-//  __func__ »ò __FUNCTION__ »ñÈ¡º¯ÊıÃû
+//  __FILE__ è·å–æºæ–‡ä»¶çš„ç›¸å¯¹è·¯å¾„å’Œåå­—
+//  __LINE__ è·å–è¯¥è¡Œä»£ç åœ¨æ–‡ä»¶ä¸­çš„è¡Œå·
+//  __func__ æˆ– __FUNCTION__ è·å–å‡½æ•°å
 
 #define LOGI(format, ...)  fprintf(stderr,"[INFO]%s [%s:%d %s()] " format "\n", getTime().data(),__FILE__,__LINE__,__func__ ,##__VA_ARGS__)
 #define LOGE(format, ...)  fprintf(stderr,"[ERROR]%s [%s:%d %s()] " format "\n",getTime().data(),__FILE__,__LINE__,__func__ ,##__VA_ARGS__)
@@ -28,49 +28,49 @@ class Logger {
 public:
     static void setOutput(std::ostream& os) { s_out = &os; }
 
-    // ¹¤³§£º·µ»Ø¿ÉÒÆ¶¯ÁÙÊ±¶ÔÏó
+    // å·¥å‚ï¼šè¿”å›å¯ç§»åŠ¨ä¸´æ—¶å¯¹è±¡
     static Logger log() { return Logger(); }
 
-    // Ä£°å << Ö§³ÖÈÎÒâ¿ÉÁ÷Ê½ÀàĞÍ
+    // æ¨¡æ¿ << æ”¯æŒä»»æ„å¯æµå¼ç±»å‹
     template<typename T>
     Logger& operator<<(const T& t) {
         m_oss << t;
         return *this;
     }
 
-    // Ö§³Ö manipulator£¨Èç std::endl£©
+    // æ”¯æŒ manipulatorï¼ˆå¦‚ std::endlï¼‰
     Logger& operator<<(std::ostream& (*manip)(std::ostream&)) {
         m_oss << manip;
         return *this;
     }
 
-    // ¹Ø¼ü£ºÎö¹¹Ê±Êä³ö + »»ĞĞ
+    // å…³é”®ï¼šææ„æ—¶è¾“å‡º + æ¢è¡Œ
     ~Logger() {
         std::lock_guard<std::mutex> lk(s_mutex);
         *s_out << m_oss.str() << '\n';
         s_out->flush();
     }
 
-    // === ÒÆ¶¯¹¹Ôì/¸³Öµ£¨C++11£©===
+    // === ç§»åŠ¨æ„é€ /èµ‹å€¼ï¼ˆC++11ï¼‰===
     Logger(Logger&& other) noexcept : m_oss(std::move(other.m_oss)) {}
     Logger& operator=(Logger&&) noexcept = delete;
 
-    // === ½ûÖ¹¿½±´ ===
+    // === ç¦æ­¢æ‹·è´ ===
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
 private:
-    Logger() = default;   // Ö»ÔÊĞí¹¤³§º¯Êı´´½¨
+    Logger() = default;   // åªå…è®¸å·¥å‚å‡½æ•°åˆ›å»º
     std::ostringstream m_oss;
     static std::mutex  s_mutex;
     static std::ostream* s_out;
 };
 
-//// ¾²Ì¬³ÉÔ±¶¨Òå
+//// é™æ€æˆå‘˜å®šä¹‰
 //std::mutex Logger::s_mutex;
 //std::ostream* Logger::s_out = &std::cout;
 
-// È«¾Öºê£¬·½±ãÊ¹ÓÃ
+// å…¨å±€å®ï¼Œæ–¹ä¾¿ä½¿ç”¨
 #define LOG_DEBUG   Logger::log()
 #define LOG_INFO    Logger::log()
 #define LOG_WARN    Logger::log()

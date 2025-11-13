@@ -10,24 +10,24 @@
 class TimeUtils
 {
 public:
-    // Ãë¼¶Ê±¼ä´Á×ª×Ö·û´®
+    // ç§’çº§æ—¶é—´æˆ³è½¬å­—ç¬¦ä¸²
     static std::string secondsToString(time_t timestamp, const std::string& format = "%Y-%m-%d %H:%M:%S");
 
-    // ºÁÃë¼¶Ê±¼ä´Á×ª×Ö·û´®
+    // æ¯«ç§’çº§æ—¶é—´æˆ³è½¬å­—ç¬¦ä¸²
     static std::string millisecondsToString(long long milliseconds, const std::string& format = "%Y-%m-%d %H:%M:%S");
 
-    // ×Ö·û´®×ªÊ±¼ä´Á£¨Ãë£©
+    // å­—ç¬¦ä¸²è½¬æ—¶é—´æˆ³ï¼ˆç§’ï¼‰
     static time_t stringToSeconds(const std::string& timeStr, const std::string& format = "%Y-%m-%d %H:%M:%S");
 
-    // ×Ö·û´®×ªÊ±¼ä´Á£¨ºÁÃëÃë£©
+    // å­—ç¬¦ä¸²è½¬æ—¶é—´æˆ³ï¼ˆæ¯«ç§’ç§’ï¼‰
     static long long stringToMilliseconds(const std::string& timeStr, const std::string& format = "%Y-%m-%d %H:%M:%S");
 
     static std::string secondsChangeFormat(const std::string& timeStr, const std::string& srcFormat, const std::string& dstFormat);
 
-    // »ñÈ¡µ±Ç°Ê±¼ä´Á£¨Ãë£©
+    // è·å–å½“å‰æ—¶é—´æˆ³ï¼ˆç§’ï¼‰
     static time_t currentSeconds();
 
-    // »ñÈ¡µ±Ç°Ê±¼ä´Á£¨ºÁÃë£©
+    // è·å–å½“å‰æ—¶é—´æˆ³ï¼ˆæ¯«ç§’ï¼‰
     static long long currentMilliseconds();
 
 };

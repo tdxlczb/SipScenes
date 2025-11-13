@@ -13,100 +13,100 @@ class SipServer
 public:
     SipServer();
     ~SipServer();
-    // ¼ÓÔØSip·şÎñÆ÷ÒÔÆô¶¯
+    // åŠ è½½SipæœåŠ¡å™¨ä»¥å¯åŠ¨
     bool Init(const ServerInfo& serverInfo);
-    // ÊÂ¼ş´¦ÀíÑ­»·
+    // äº‹ä»¶å¤„ç†å¾ªç¯
     void Loop();
-    // ÉèÖÃÊÂ¼ş»Øµ÷
+    // è®¾ç½®äº‹ä»¶å›è°ƒ
     void SetSipEvent(SipEvent* pEvent);
-    // ÇëÇóÍ¨»°
+    // è¯·æ±‚é€šè¯
     int Call(const std::string& callUid, const ClientInfo& clientInfo, const InviteOptions& options);
-    // Í£Ö¹Í¨»°
+    // åœæ­¢é€šè¯
     int Hangup(const std::string& callUid, const ClientInfo& clientInfo);
-    // ·¢ËÍMESSAGEÏûÏ¢
+    // å‘é€MESSAGEæ¶ˆæ¯
     int RequestMessage(const ClientInfo& clientInfo, const std::string& message);
-    // ·¢ËÍNOTIFYÏûÏ¢
+    // å‘é€NOTIFYæ¶ˆæ¯
     int RequestNotify();
-    // ·¢ËÍINFOÏûÏ¢
+    // å‘é€INFOæ¶ˆæ¯
     int RequestInfo(const std::string& callUid, const std::string& body);
 public:
     /// <summary>
-    /// SipÊÂ¼ş´¦Àí
+    /// Sipäº‹ä»¶å¤„ç†
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
     void EventHandle(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// ¸ñÊ½»¯´òÓ¡ÏûÏ¢
+    /// æ ¼å¼åŒ–æ‰“å°æ¶ˆæ¯
     /// </summary>
-    /// <param name="pSipMsg">SipÏûÏ¢</param>
+    /// <param name="pSipMsg">Sipæ¶ˆæ¯</param>
     void DumpMessage(osip_message_t* pSipMsg);
     void DumpRequest(eXosip_event_t* pSipEvt);
     void DumpResponse(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// ÇëÇó´¦Àí£ºsip_method = REGISTER
+    /// è¯·æ±‚å¤„ç†ï¼šsip_method = REGISTER
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
     void Response_REGISTER(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// Response_REGISTERµÄ×Ó´¦Àí(Î´¾­ÊÚÈ¨)
+    /// Response_REGISTERçš„å­å¤„ç†(æœªç»æˆæƒ)
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
     void Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// ÇëÇó´¦Àí£ºsip_method = MESSAGE
+    /// è¯·æ±‚å¤„ç†ï¼šsip_method = MESSAGE
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
     void Response_MESSAGE(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// ÇëÇó´¦Àí£ºsip_method = INVITE
+    /// è¯·æ±‚å¤„ç†ï¼šsip_method = INVITE
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
     void Response_INVITE(eXosip_event_t* pSipEvt);
     void Response_INVITE_ACK(eXosip_event_t* pSipEvt);
     void Response_INVITE_BYE(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// ·¢ËÍÏìÓ¦
+    /// å‘é€å“åº”
     /// </summary>
-    /// <param name="pSipEvt">SipÊÂ¼ş</param>
-    /// <param name="iStatus">ÏìÓ¦Âë</param>
+    /// <param name="pSipEvt">Sipäº‹ä»¶</param>
+    /// <param name="iStatus">å“åº”ç </param>
     void MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus);
     /// <summary>
-    /// ·¢ËÍÇëÇó£ºINVITE
+    /// å‘é€è¯·æ±‚ï¼šINVITE
     /// </summary>
-    /// <param name="clientInfo">·¢ËÍµÄÄ¿µÄ¶ÔÏó</param>
+    /// <param name="clientInfo">å‘é€çš„ç›®çš„å¯¹è±¡</param>
     int Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options);
     /// <summary>
-    /// ·¢ËÍÇëÇó£ºBYE
+    /// å‘é€è¯·æ±‚ï¼šBYE
     /// </summary>
-    /// <param name="clientInfo">·¢ËÍµÄÄ¿µÄ¶ÔÏó</param>
+    /// <param name="clientInfo">å‘é€çš„ç›®çš„å¯¹è±¡</param>
     int Request_BYE(int cid, int did);
     int Request_BYE(const ClientInfo& clientInfo);
     /// <summary>
-    /// ·¢ËÍÇëÇó£ºMESSAGE
+    /// å‘é€è¯·æ±‚ï¼šMESSAGE
     /// </summary>
-    /// <param name="clientInfo">·¢ËÍµÄÄ¿µÄ¶ÔÏó</param>
+    /// <param name="clientInfo">å‘é€çš„ç›®çš„å¯¹è±¡</param>
     int Request_MESSAGE(const ClientInfo& clientInfo, const std::string& body);
     /// <summary>
-    /// ·¢ËÍÇëÇó£ºNOTIFY
+    /// å‘é€è¯·æ±‚ï¼šNOTIFY
     /// </summary>
-    /// <param name="clientInfo">·¢ËÍµÄÄ¿µÄ¶ÔÏó</param>
+    /// <param name="clientInfo">å‘é€çš„ç›®çš„å¯¹è±¡</param>
     int Request_NOTIFY(const ClientInfo& clientInfo, const std::string& body);
     /// <summary>
-    /// ·¢ËÍÇëÇó£ºINFO
+    /// å‘é€è¯·æ±‚ï¼šINFO
     /// </summary>
-    /// <param name="DialogInfo">·¢ËÍµÄÄ¿µÄ¶ÔÏó</param>
+    /// <param name="DialogInfo">å‘é€çš„ç›®çš„å¯¹è±¡</param>
     int Request_INFO(const DialogInfo& dlgInfo, const std::string& body);
 private:
     const std::string kUserAgent = "GB28181-Server";
     const int kTimeout = 1800;
     const int kExpiry = 3600;
 
-    ServerInfo m_serverInfo;        //·şÎñÆ÷ĞÅÏ¢
-    struct eXosip_t* m_pSipCtx;//SipÉÏÏÂÎÄ
-    bool m_isRun = false;//ÊÇ·ñÕıÔÚÊÂ¼şÑ­»·
+    ServerInfo m_serverInfo;        //æœåŠ¡å™¨ä¿¡æ¯
+    struct eXosip_t* m_pSipCtx;//Sipä¸Šä¸‹æ–‡
+    bool m_isRun = false;//æ˜¯å¦æ­£åœ¨äº‹ä»¶å¾ªç¯
     SipEvent* m_pSipEvent = nullptr;
 
-    std::map<int, DialogInfo> m_mapCall;// <cid,callUid> exosip2¹ÜÀíµÄcid£¬°ó¶¨»á»°£¬ÓÃÓÚ·¢ËÍInviteÖ®ºóµÄÔ¤°ó¶¨
-    std::map<std::string, DialogInfo> m_mapDialog;// <callUid,DialogInfo> ºô½ĞµÄ×Ô¶¨ÒåcallId£¬°ó¶¨»á»°£¬ÓÃÓÚ³É¹¦´´½¨»á»°Ö®ºóµÄÕæÊµ°ó¶¨
+    std::map<int, DialogInfo> m_mapCall;// <cid,callUid> exosip2ç®¡ç†çš„cidï¼Œç»‘å®šä¼šè¯ï¼Œç”¨äºå‘é€Inviteä¹‹åçš„é¢„ç»‘å®š
+    std::map<std::string, DialogInfo> m_mapDialog;// <callUid,DialogInfo> å‘¼å«çš„è‡ªå®šä¹‰callIdï¼Œç»‘å®šä¼šè¯ï¼Œç”¨äºæˆåŠŸåˆ›å»ºä¼šè¯ä¹‹åçš„çœŸå®ç»‘å®š
 };
 

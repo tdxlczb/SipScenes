@@ -116,6 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +130,7 @@
     <ClCompile Include="http_digest.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="md5.cpp" />
+    <ClCompile Include="string_utils.cpp" />
     <ClCompile Include="thread_pool.cpp" />
     <ClCompile Include="time_utils.cpp" />
   </ItemGroup>
@@ -140,6 +142,7 @@
     <ClInclude Include="http_digest.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="md5.h" />
+    <ClInclude Include="string_utils.h" />
     <ClInclude Include="thread_pool.h" />
     <ClInclude Include="time_utils.h" />
   </ItemGroup>

@@ -7,10 +7,12 @@
 #include "tools/config.h"
 #include "tools/file_utils.h"
 #include "tools/time_utils.h"
+#include "tools/string_utils.h"
 #include "tools/log.h"
 #include "gb28181/sdp.h"
 #include "gb28181/manscdp.h"
 #include "gb28181/stream.h"
+#include "gb28181/tools.h"
 
 GB28181Server::GB28181Server()
     : m_config(std::make_shared<Config>())
@@ -114,12 +116,14 @@ int GB28181Server::ControlStream(const StreamInfo& info)
     return m_sipServer->RequestInfo(streamId, body);
 }
 
-int GB28181Server::GetDeviceList(const MessageInfo& info)
+DeviceList GB28181Server::GetDeviceList(const MessageInfo& info)
 {
-    m_threadPool.enqueue([this, info]() {
-        QueryCatalog(info);
-        });
-    return 0;
+    if (info.update) {
+        m_threadPool.enqueue([this, info]() {
+            QueryCatalog(info);
+            });
+    }
+    return m_deviceList;
 }
 
 std::shared_ptr<Config> GB28181Server::GetConfig()
@@ -240,9 +244,9 @@ std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& realm)
 
     std::stringstream ss;
     ss << std::setw(4) << std::setfill('0') << m_streamSeq;
-    //µÚ1Î»ÎªÀúÊ·»òÕßÊµÊ±Á÷,0ÎªÊµÊ±£¬1ÎªÀúÊ·
-    //µÚ2-6Î»È¡¼à¿ØÓòµÄ4-8Î»
-    //µÚ7-10Î»Îª²»³ä·ÖµÄÃ½ÌåÁ÷±êÊ¶£¬ÕâÀïÊ¹ÓÃ×ÔÔö£¬Ã¿Éú³ÉÒ»¸össrc¶¼×ÔÔö
+    //ç¬¬1ä½ä¸ºå†å²æˆ–è€…å®æ—¶æµ,0ä¸ºå®æ—¶ï¼Œ1ä¸ºå†å²
+    //ç¬¬2-6ä½å–ç›‘æ§åŸŸçš„4-8ä½
+    //ç¬¬7-10ä½ä¸ºä¸å……åˆ†çš„åª’ä½“æµæ ‡è¯†ï¼Œè¿™é‡Œä½¿ç”¨è‡ªå¢ï¼Œæ¯ç”Ÿæˆä¸€ä¸ªssrcéƒ½è‡ªå¢
     std::string ssrc = std::to_string((int)isHistory) + realm.substr(3, 5) + ss.str();
     return ssrc;
 }
@@ -252,7 +256,7 @@ int GB28181Server::CreateSN()
     return ++m_messageSn;
 }
 
-void GB28181Server::QueryCatalog(const MessageInfo& info)
+int GB28181Server::QueryCatalog(const MessageInfo& info)
 {
     gb28181::QueryCatalog query;
     query.CmdType = gb28181::kCatalog;
@@ -265,9 +269,11 @@ void GB28181Server::QueryCatalog(const MessageInfo& info)
     clientInfo.sIp = info.ip;
     clientInfo.iPort = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
+
+    return query.SN;
 }
 
-void GB28181Server::QueryDeviceInfo(const MessageInfo& info)
+int GB28181Server::QueryDeviceInfo(const MessageInfo& info)
 {
     gb28181::QueryDeviceInfo query;
     query.CmdType = gb28181::kDeviceInfo;
@@ -280,6 +286,8 @@ void GB28181Server::QueryDeviceInfo(const MessageInfo& info)
     clientInfo.sIp = info.ip;
     clientInfo.iPort = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
+
+    return query.SN;
 }
 
 void GB28181Server::OnRegister(const ClientInfo& clientInfo)
@@ -295,8 +303,28 @@ void GB28181Server::OnRegister(const ClientInfo& clientInfo)
 
 void GB28181Server::OnMessage(const ClientInfo& info, const std::string& message)
 {
-    gb28181::Catalog catalogInfo = gb28181::GetCatalog(message);
+    auto utf8Str = StringUtils::GB2312ToUTF8(message);
+    gb28181::Catalog catalog = gb28181::GetCatalog(utf8Str);
+    if (catalog.DeviceID.empty())
+        return;
 
+    gb28181::Device newDevice = gb28181::GetDevice(catalog);
+    if (m_deviceList.find(newDevice.deviceId) == m_deviceList.end()) {
+        m_deviceList.emplace(newDevice.deviceId, newDevice);
+        return;
+    }
+    auto deviceChannels = m_deviceList.at(newDevice.deviceId).channels;
+    for (auto iter = newDevice.channels.begin(); iter != newDevice.channels.end(); ++iter)
+    {
+        if (deviceChannels.find(iter->first) != deviceChannels.end()) {
+            //æ›¿æ¢æ›´æ–°channelæ•°æ®
+            deviceChannels[iter->first] = iter->second;
+        }
+        else {
+            deviceChannels.emplace(iter->first, iter->second);
+        }
+    }
+    m_deviceList.at(newDevice.deviceId).channels = deviceChannels;
 }
 
 std::shared_ptr<GB28181Server> GB28181Server::GetSharedThis()
@@ -306,7 +334,7 @@ std::shared_ptr<GB28181Server> GB28181Server::GetSharedThis()
 
 std::weak_ptr<GB28181Server> GB28181Server::GetWeakThis()
 {
-    //Ê¹ÓÃ¸Ãº¯ÊıÊ±£¬¶ÔÏó±ØĞëÓÉshared_ptr¹ÜÀí£¬¼´auto obj = std::make_shared<MyClass>()£»²»ÄÜÔÚÕ»ÉÏ´´½¨¶ÔÏó£¬¼´MyClass obj
+    //ä½¿ç”¨è¯¥å‡½æ•°æ—¶ï¼Œå¯¹è±¡å¿…é¡»ç”±shared_ptrç®¡ç†ï¼Œå³auto obj = std::make_shared<MyClass>()ï¼›ä¸èƒ½åœ¨æ ˆä¸Šåˆ›å»ºå¯¹è±¡ï¼Œå³MyClass obj
     return weak_from_this();
 }
 

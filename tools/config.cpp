@@ -7,7 +7,7 @@
 bool Config::Load(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "ÎÞ·¨´ò¿ªÎÄ¼þ: " << filename << std::endl;
+        std::cerr << "æ— æ³•æ‰“å¼€æ–‡ä»¶: " << filename << std::endl;
         return false;
     }
 
@@ -17,18 +17,18 @@ bool Config::Load(const std::string& filename) {
     while (std::getline(file, line)) {
         line = trim(line);
 
-        // Ìø¹ý¿ÕÐÐºÍ×¢ÊÍ
+        // è·³è¿‡ç©ºè¡Œå’Œæ³¨é‡Š
         if (line.empty() || line[0] == ';' || line[0] == '#') {
             continue;
         }
 
-        // ´¦Àí½Ú(section)
+        // å¤„ç†èŠ‚(section)
         if (line[0] == '[' && line[line.length() - 1] == ']') {
             current_section = trim(line.substr(1, line.length() - 2));
             continue;
         }
 
-        // ´¦Àí¼üÖµ¶Ô
+        // å¤„ç†é”®å€¼å¯¹
         size_t pos = line.find('=');
         if (pos != std::string::npos) {
             std::string key = trim(line.substr(0, pos));
@@ -89,7 +89,7 @@ bool Config::GetBool(const std::string& section, const std::string& key, bool de
     return default_value;
 }
 
-// ÏÔÊ¾ËùÓÐÅäÖÃ£¨ÓÃÓÚµ÷ÊÔ£©
+// æ˜¾ç¤ºæ‰€æœ‰é…ç½®ï¼ˆç”¨äºŽè°ƒè¯•ï¼‰
 void Config::Display() {
     for (const auto& section : m_data) {
         std::cout << "[" << section.first << "]" << std::endl;
@@ -100,7 +100,7 @@ void Config::Display() {
     }
 }
 
-// È¥³ý×Ö·û´®Á½¶ËµÄ¿Õ°××Ö·û
+// åŽ»é™¤å­—ç¬¦ä¸²ä¸¤ç«¯çš„ç©ºç™½å­—ç¬¦
 std::string Config::trim(const std::string& str) {
     size_t start = str.find_first_not_of(" \t\r\n");
     size_t end = str.find_last_not_of(" \t\r\n");

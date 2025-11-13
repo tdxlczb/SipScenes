@@ -68,12 +68,12 @@ bool str2int(const std::string& s, int& out)
 }
 
 // 线程安全、进程级单调递增
-std::string GetSN() {
+int GetSN() {
     static std::atomic<uint64_t> seq{ 0 };
     // 毫秒时间戳取低 32 位 + 自增 24 位 → 最多 56 位，字符串长度 <= 17
     uint64_t t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     uint64_t s = seq.fetch_add(1, std::memory_order_relaxed);
-    return std::to_string((t & 0xFFFFFFFF) * 1000000 + (s & 0xFFFFFF));
+    return (t & 0xFFFFFFFF) * 1000000 + (s & 0xFFFFFF);
 }
 
 std::string BuildQuery(const QueryBase& manscdp)
@@ -172,6 +172,9 @@ Catalog GetCatalog(const std::string& xml)
         return rsp;
 
     rsp.CmdType = GetChildTextString(elmtRoot, "CmdType");
+    if (rsp.CmdType != kCatalog)
+        return rsp;
+
     rsp.SN = GetChildTextInt(elmtRoot, "SN");
     rsp.DeviceID = GetChildTextString(elmtRoot, "DeviceID");
     rsp.SumNum = GetChildTextInt(elmtRoot, "SumNum");

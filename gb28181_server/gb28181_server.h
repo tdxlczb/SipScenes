@@ -2,14 +2,18 @@
 #include <string>
 #include <memory>
 #include <thread>
+#include <map>
 #include "common_def.h"
 #include "sip/sip_event.h"
 #include "tools/thread_pool.h"
+#include "gb28181/device.h"
+#include "gb28181/device_channel.h"
+
+using DeviceList = std::map<std::string, gb28181::Device>;
 
 class Config;
 class HttpServer;
 class SipServer;
-
 class GB28181Server : public std::enable_shared_from_this<GB28181Server>, public SipEvent
 {
 public:
@@ -20,7 +24,8 @@ public:
     int OpenStream(const StreamInfo& info);
     int CloseStream(const StreamInfo& info);
     int ControlStream(const StreamInfo& info);
-    int GetDeviceList(const MessageInfo& info);
+
+    DeviceList GetDeviceList(const MessageInfo& info);
 
     std::shared_ptr<Config> GetConfig();
     std::string CreateStreamId(const StreamInfo& info);
@@ -30,8 +35,9 @@ private:
     int ResumeRtpCheck(const std::string& streamId);
     std::string CreateSSRC(bool isHistory, const std::string& realm);
     int CreateSN();
-    void QueryCatalog(const MessageInfo& info);
-    void QueryDeviceInfo(const MessageInfo& info);
+    // 返回sn号
+    int QueryCatalog(const MessageInfo& info);
+    int QueryDeviceInfo(const MessageInfo& info);
 
 private:
     virtual void OnRegister(const ClientInfo& info) override;
@@ -52,5 +58,7 @@ private:
 
     int m_streamSeq = 0;
     int m_messageSn = 0;
+
+    DeviceList m_deviceList;
 };
 

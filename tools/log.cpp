@@ -1,6 +1,6 @@
 #include "log.h"
 
 
-// ¾²Ì¬³ÉÔ±¶¨Òå
+// é™æ€æˆå‘˜å®šä¹‰
 std::mutex Logger::s_mutex;
 std::ostream* Logger::s_out = &std::cout;
