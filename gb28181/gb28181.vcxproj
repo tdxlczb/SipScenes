@@ -23,6 +23,11 @@
     <ClCompile Include="device.cpp" />
     <ClCompile Include="device_channel.cpp" />
     <ClCompile Include="manscdp.cpp" />
+    <ClCompile Include="manscdp_base.cpp" />
+    <ClCompile Include="manscdp_control.cpp" />
+    <ClCompile Include="manscdp_notify.cpp" />
+    <ClCompile Include="manscdp_query.cpp" />
+    <ClCompile Include="manscdp_response.cpp" />
     <ClCompile Include="sdp.cpp" />
     <ClCompile Include="stream.cpp" />
     <ClCompile Include="tools.cpp" />
@@ -33,6 +38,12 @@
     <ClInclude Include="device_base.h" />
     <ClInclude Include="device_channel.h" />
     <ClInclude Include="manscdp.h" />
+    <ClInclude Include="manscdp_base.h" />
+    <ClInclude Include="manscdp_control.h" />
+    <ClInclude Include="manscdp_notify.h" />
+    <ClInclude Include="manscdp_query.h" />
+    <ClInclude Include="manscdp_response.h" />
+    <ClInclude Include="manscdp_type.h" />
     <ClInclude Include="sdp.h" />
     <ClInclude Include="stream.h" />
     <ClInclude Include="tools.h" />

@@ -2,5 +2,4 @@
 
 namespace gb28181 {
 
-
 }

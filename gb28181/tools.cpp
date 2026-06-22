@@ -20,7 +20,7 @@ DeviceBase GetDeviceBase(const itemType& item)
     device.secrecy = item.Secrecy;
     device.ip = item.IPAddress;
     device.port = item.Port;
-    device.status = item.Status;
+    device.status = (item.Status == kStatusON) ? 1 : 0;
     return device;
 }
 

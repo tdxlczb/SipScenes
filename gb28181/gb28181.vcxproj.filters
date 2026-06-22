@@ -36,6 +36,21 @@
     <ClCompile Include="tools.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="manscdp_control.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="manscdp_query.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="manscdp_response.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="manscdp_base.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="manscdp_notify.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sdp.h">
@@ -60,6 +75,24 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="tools.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_control.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_query.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_response.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_base.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_type.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="manscdp_notify.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
