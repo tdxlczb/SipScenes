@@ -40,8 +40,24 @@ f=
 */
 #include "sdp.h"
 #include <sstream>
+#include <iomanip>
 
 namespace gb28181 {
+
+std::string CreateSSRC(bool isHistory, const std::string& id, int seq)
+{
+    // 媒体流标识只有4位，不能大于9999
+    if (seq < 0 || seq > 9999)
+        return "";
+
+    std::stringstream ss;
+    ss << std::setw(4) << std::setfill('0') << seq;
+    //第1位为历史或者实时流,0为实时，1为历史
+    //第2-6位取监控域ID的4-8位
+    //第7-10位为不充分的媒体流标识
+    std::string ssrc = std::to_string((int)isHistory) + id.substr(3, 5) + ss.str();
+    return ssrc;
+}
 
 std::string BuildInvateRequestSdp(const SdpParam& sdpParam)
 {

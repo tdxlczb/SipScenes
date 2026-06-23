@@ -57,14 +57,9 @@ struct QueryRecordInfo : public QueryBase
 //==================== RecordInfo ====================
 
 
-struct QueryCmd : public ManscdpBase
-{
-    std::string StartTime;
-    std::string EndTime;
-};
-
 std::string BuildQuery(const QueryBase& manscdp);
 std::string BuildQueryCatalog(const QueryCatalog& manscdp);
+
 
 } // namespace gb28181
 

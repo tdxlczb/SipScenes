@@ -116,7 +116,7 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
             ret = shared->OpenStream(info);
             if (ret >= 0) {
                 std::string streamId = shared->CreateStreamId(info);
-                std::string rtpIp = shared->GetConfig()->GetString("rtp_server", "ip");
+                std::string rtpIp = shared->GetConfig()->GetString("media", "ip");
                 data["rtsp"] = "rtsp://" + rtpIp + ":554/rtp/" + streamId;
             }
         }

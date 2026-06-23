@@ -57,7 +57,7 @@ bool SipServer::Init(const ServerInfo& serverInfo)
     i = eXosip_listen_addr(ctx, IPPROTO_TCP, NULL, port, AF_INET, 1);  // TLS
     i = eXosip_listen_addr(ctx, IPPROTO_UDP, NULL, port, AF_INET, 1);  // DTLS
     */
-    iRet = eXosip_listen_addr(m_pSipCtx, IPPROTO_UDP, nullptr, m_serverInfo.iPort, AF_INET, 0);
+    iRet = eXosip_listen_addr(m_pSipCtx, IPPROTO_UDP, nullptr, m_serverInfo.port, AF_INET, 0);
     if (OSIP_SUCCESS != iRet) {
         LOGE("eXosip_listen_addr failed:%d", iRet);
         return false;
@@ -74,8 +74,8 @@ bool SipServer::Init(const ServerInfo& serverInfo)
     //eXosip_set_option(m_pSipCtx, EXOSIP_OPT_USE_RPORT, (void*)&use_rport);
 
     eXosip_set_user_agent(m_pSipCtx, kUserAgent.c_str());
-    iRet = eXosip_add_authentication_info(m_pSipCtx, m_serverInfo.sUser.c_str(), m_serverInfo.sUser.c_str()
-        , m_serverInfo.sPwd.c_str(), NULL, m_serverInfo.sRealm.c_str());
+    iRet = eXosip_add_authentication_info(m_pSipCtx, m_serverInfo.id.c_str(), m_serverInfo.id.c_str()
+        , m_serverInfo.password.c_str(), NULL, m_serverInfo.realm.c_str());
     if (OSIP_SUCCESS != iRet) {
         LOGE("eXosip_listen_addr failed:%d", iRet);
         return false;
@@ -532,7 +532,7 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     //提取请求中的交互信息并hash
     HASHHEX hashResponse = "";
     {
-        const char* password = m_serverInfo.sPwd.c_str();
+        const char* password = m_serverInfo.password.c_str();
         //这里需要使用客户端的账号密码认证，所以一般情况是需要在sip协议以外在服务端注册登录的账号密码信息
         HASHHEX hash1 = "", hash2 = "";
         DigestCalcHA1(algorithm, username, realm, password, nonce, nonce_count, hash1);
@@ -545,9 +545,9 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
     osip_message_get_contact(pSipEvt->request, 0, &pContact);
 
     ClientInfo clientInfo;
-    clientInfo.sUser = username;
-    clientInfo.sIp = pContact->url->host;
-    clientInfo.iPort = atoi(pContact->url->port);
+    clientInfo.id = username;
+    clientInfo.ip = pContact->url->host;
+    clientInfo.port = atoi(pContact->url->port);
 
     //hash验证，验证交互信息一致性
     if (response && 0 == memcmp(hashResponse, response, HASHHEXLEN)) {//一致则注册/注销此用户
@@ -595,7 +595,7 @@ void SipServer::Response_REGISTER_401unauthorized(eXosip_event_t* pSipEvt)
     osip_www_authenticate_t* pHeader = nullptr;
     osip_www_authenticate_init(&pHeader);//构建WWW-Authenticate响应头
     osip_www_authenticate_set_auth_type(pHeader, osip_strdup("Digest"));//设置认证类型
-    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.sRealm.c_str()));//提供认证用的SIP服务器域
+    osip_www_authenticate_set_realm(pHeader, osip_enquote(m_serverInfo.realm.c_str()));//提供认证用的SIP服务器域
     osip_www_authenticate_set_nonce(pHeader, osip_enquote(nonce));//提供认证用的SIP服务随机数值
     osip_www_authenticate_set_algorithm(pHeader, osip_strdup("MD5"));
     osip_www_authenticate_set_qop_options(pHeader, osip_enquote("auth"));//这里要加双引号
@@ -640,9 +640,9 @@ void SipServer::Response_MESSAGE(eXosip_event_t* pSipEvt)
 
     ClientInfo clientInfo;
     if (pContact) {
-        clientInfo.sUser = pContact->url->username;
-        clientInfo.sIp = pContact->url->host;
-        clientInfo.iPort = atoi(pContact->url->port);
+        clientInfo.id = pContact->url->username;
+        clientInfo.ip = pContact->url->host;
+        clientInfo.port = atoi(pContact->url->port);
     }
     osip_body_t* pBody = nullptr;
     osip_message_get_body(pSipEvt->request, 0, &pBody);
@@ -685,7 +685,7 @@ void SipServer::Response_INVITE(eXosip_event_t* pSipEvt)
         "a=rtpmap:8 PCMA/8000\r\n"//a=rtpmap:104 mpeg4-generic/16000
         "a=rtpmap:96 PS/90000\r\n"
         "y=0200000017\r\n"//a/-1/6/3
-        "f=v/////a/1/8/1\r\n", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.sIp.c_str(), /*m_serverInfo.iRtpPort*/atoi(srcPort.c_str()));
+        "f=v/////a/1/8/1\r\n", m_serverInfo.id.c_str(), m_serverInfo.ip.c_str(), m_serverInfo.ip.c_str(), /*m_serverInfo.iRtpPort*/atoi(srcPort.c_str()));
 
     int iRet = eXosip_call_build_answer(m_pSipCtx, pSipEvt->tid, 200, &pMsg);
     if (iRet) {
@@ -759,8 +759,8 @@ int SipServer::Request_INVITE(const ClientInfo& clientInfo, const InviteOptions&
 {
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str());
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.id.c_str(), m_serverInfo.domain.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.id.c_str(), clientInfo.ip.c_str(), clientInfo.port);
 
     osip_message_t* pMsg = nullptr;
     int iRet = eXosip_call_build_initial_invite(m_pSipCtx, &pMsg, sTo, sFrom, nullptr, nullptr);
@@ -805,9 +805,9 @@ int SipServer::Request_BYE(const ClientInfo& clientInfo)
     char sTo[1024] = { 0 };
     char sContact[1024] = { 0 };
 
-    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.sUser.c_str(), m_serverInfo.sIp.c_str(), m_serverInfo.iPort);
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sRealm.c_str());
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
+    sprintf_s(sContact, "sip:%s@%s:%d", m_serverInfo.id.c_str(), m_serverInfo.ip.c_str(), m_serverInfo.port);
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.id.c_str(), m_serverInfo.realm.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.id.c_str(), clientInfo.ip.c_str(), clientInfo.port);
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "BYE", sTo, sFrom, nullptr);
     if (iRet) {
         LOGE("eXosip_call_build_initial_invite error: %s %s ret:%d", sFrom, sTo, iRet);
@@ -872,8 +872,8 @@ int SipServer::Request_MESSAGE(const ClientInfo& clientInfo, const std::string& 
 
     char sFrom[1024] = { 0 };
     char sTo[1024] = { 0 };
-    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.sUser.c_str(), m_serverInfo.sDomain.c_str());
-    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.sUser.c_str(), clientInfo.sIp.c_str(), clientInfo.iPort);
+    sprintf_s(sFrom, "sip:%s@%s", m_serverInfo.id.c_str(), m_serverInfo.domain.c_str());
+    sprintf_s(sTo, "sip:%s@%s:%d", clientInfo.id.c_str(), clientInfo.ip.c_str(), clientInfo.port);
 
     osip_message_t* pMsg = nullptr;
     int iRet = eXosip_message_build_request(m_pSipCtx, &pMsg, "MESSAGE", sTo, sFrom, nullptr);

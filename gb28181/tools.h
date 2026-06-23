@@ -10,7 +10,7 @@ namespace gb28181 {
 //对象转换
 DeviceBase GetDeviceBase(const itemType& item);
 
-Device GetDevice(const Catalog& catalog);
+Device GetDevice(const ResponseCatalog& catalog);
 
 } // namespace gb28181
 

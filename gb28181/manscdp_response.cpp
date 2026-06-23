@@ -40,7 +40,6 @@
 
 namespace gb28181 {
 
-
 //str转int
 bool str2int(const std::string& s, int& out)
 {
@@ -114,9 +113,9 @@ static itemType GetItem(tinyxml2::XMLElement* elmt)
     return item;
 }
 
-Catalog GetCatalog(const std::string& xml)
+ResponseCatalog GetResponseCatalog(const std::string& xml)
 {
-    Catalog rsp;
+    ResponseCatalog rsp;
     tinyxml2::XMLDocument docXml;
     tinyxml2::XMLError errXml = docXml.Parse(xml.c_str());
     if (tinyxml2::XML_SUCCESS != errXml)

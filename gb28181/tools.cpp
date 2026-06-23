@@ -24,7 +24,7 @@ DeviceBase GetDeviceBase(const itemType& item)
     return device;
 }
 
-Device GetDevice(const Catalog& catalog)
+Device GetDevice(const ResponseCatalog& catalog)
 {
     Device device;
     device.deviceId = catalog.DeviceID;

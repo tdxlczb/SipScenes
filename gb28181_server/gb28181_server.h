@@ -30,10 +30,10 @@ public:
     std::shared_ptr<Config> GetConfig();
     std::string CreateStreamId(const StreamInfo& info);
 private:
-    int OpenRtpServer(const std::string& streamId, int rtpPort, int tcpMode);
+    int OpenRtpServer(const std::string& streamId, int tcpMode);
     int PauseRtpCheck(const std::string& streamId);
     int ResumeRtpCheck(const std::string& streamId);
-    std::string CreateSSRC(bool isHistory, const std::string& realm);
+    std::string CreateSSRC(bool isHistory, const std::string& id);
     int CreateSN();
     // 返回sn号
     int QueryCatalog(const MessageInfo& info);

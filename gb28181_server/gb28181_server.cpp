@@ -44,17 +44,14 @@ bool GB28181Server::Start()
 int GB28181Server::OpenStream(const StreamInfo& info)
 {
     std::string streamId = CreateStreamId(info);
-    std::string rtpIp = m_config->GetString("rtp_server", "ip");
-    int rtpPort = m_config->GetInt("rtp_server", "port");
-    rtpPort = OpenRtpServer(streamId, rtpPort, info.tcpMode);
+    int rtpPort = OpenRtpServer(streamId, info.tcpMode);
     if (rtpPort <= 0) {
         return -1;
     }
-    std::string sipUser = m_config->GetString("sip_server", "user");
-    std::string sipRealm = m_config->GetString("sip_server", "realm");
-
+    std::string sipId = m_config->GetString("sip", "id");
+    std::string rtpIp = m_config->GetString("media", "ip");
     gb28181::SdpParam sdpParam;
-    sdpParam.deviceId = sipUser;
+    sdpParam.deviceId = sipId;
     sdpParam.channelId = info.channelId;
     sdpParam.ip = rtpIp;
     sdpParam.port = rtpPort;
@@ -63,21 +60,21 @@ int GB28181Server::OpenStream(const StreamInfo& info)
         sdpParam.type = gb28181::kTransPlayBack;
         sdpParam.start = TimeUtils::stringToSeconds(info.startTime);
         sdpParam.end = TimeUtils::stringToSeconds(info.endTime);
-        sdpParam.ssrc = CreateSSRC(true, sipRealm);
+        sdpParam.ssrc = CreateSSRC(true, sipId);
     }
     else {
         sdpParam.type = gb28181::kTransPlay;
-        sdpParam.ssrc = CreateSSRC(false, sipRealm);
+        sdpParam.ssrc = CreateSSRC(false, sipId);
     }
     sdpParam.streamnumber = info.streamNumber;
 
     ClientInfo clientInfo;
-    clientInfo.sUser = info.channelId;
-    clientInfo.sIp = info.ip;
-    clientInfo.iPort = info.port;
+    clientInfo.id = info.channelId;
+    clientInfo.ip = info.ip;
+    clientInfo.port = info.port;
     InviteOptions options;
     options.sdp = gb28181::BuildInvateRequestSdp(sdpParam);
-    options.subject = info.channelId + ":" + sdpParam.ssrc + "," + sipUser + ":0";
+    options.subject = info.channelId + ":" + sdpParam.ssrc + "," + sipId + ":0";
     return m_sipServer->Call(streamId, clientInfo, options);
 }
 
@@ -85,9 +82,9 @@ int GB28181Server::CloseStream(const StreamInfo& info)
 {
     std::string streamId = CreateStreamId(info);
     ClientInfo clientInfo;
-    clientInfo.sUser = info.channelId;
-    clientInfo.sIp = info.ip;
-    clientInfo.iPort = info.port;
+    clientInfo.id = info.channelId;
+    clientInfo.ip = info.ip;
+    clientInfo.port = info.port;
     return m_sipServer->Hangup(streamId, clientInfo);
 }
 
@@ -145,12 +142,16 @@ std::string GB28181Server::CreateStreamId(const StreamInfo& info)
     return streamId;
 }
 
-int GB28181Server::OpenRtpServer(const std::string& streamId, int rtpPort, int tcpMode)
+int GB28181Server::OpenRtpServer(const std::string& streamId, int tcpMode)
 {
-    httplib::Client cli("localhost", 80);
+    std::string ip = m_config->GetString("media", "ip");
+    int port = m_config->GetInt("media", "port");
+    std::string secret = m_config->GetString("media", "secret");
+    int rtpPort = m_config->GetInt("media", "rtp_port");
+    httplib::Client cli(ip, port);
     cli.set_connection_timeout(2, 0);
     char url[256];// = "/index/api/openRtpServer?port=0&secret=xZqp6Gi4W637Ns6WE2A0aiHUBeWeINah&stream_id=34020000001180000002_34020000001320000002_3&tcp_mode=0";
-    snprintf(url, sizeof(url), "/index/api/openRtpServer?port=%d&secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s&tcp_mode=%d", rtpPort, streamId.c_str(), tcpMode);
+    snprintf(url, sizeof(url), "/index/api/openRtpServer?port=%d&secret=%s&stream_id=%s&tcp_mode=%d", rtpPort, secret.c_str(), streamId.c_str(), tcpMode);
     auto res = cli.Get(url);
     if (!res) {
         LOG_ERROR << "error code: " << res.error();
@@ -171,19 +172,22 @@ int GB28181Server::OpenRtpServer(const std::string& streamId, int rtpPort, int t
     }
 
     int code = root.get("code", -1).asInt();
-    int port = root.get("port", -1).asInt();
-    if (code == 0 && port > 0) {
-        return port;
+    rtpPort = root.get("port", -1).asInt();
+    if (code == 0 && rtpPort > 0) {
+        return rtpPort;
     }
     return -1;
 }
 
 int GB28181Server::PauseRtpCheck(const std::string& streamId)
 {
-    httplib::Client cli("localhost", 80);
+    std::string ip = m_config->GetString("media", "ip");
+    int port = m_config->GetInt("media", "port");
+    std::string secret = m_config->GetString("media", "secret");
+    httplib::Client cli(ip, port);
     cli.set_connection_timeout(2, 0);
     char url[256];
-    snprintf(url, sizeof(url), "/index/api/pauseRtpCheck?secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s", streamId.c_str());
+    snprintf(url, sizeof(url), "/index/api/pauseRtpCheck?secret=%s&stream_id=%s", secret.c_str(), streamId.c_str());
     auto res = cli.Get(url);
     if (!res) {
         LOG_ERROR << "error code: " << res.error();
@@ -209,10 +213,13 @@ int GB28181Server::PauseRtpCheck(const std::string& streamId)
 
 int GB28181Server::ResumeRtpCheck(const std::string& streamId)
 {
-    httplib::Client cli("localhost", 80);
+    std::string ip = m_config->GetString("media", "ip");
+    int port = m_config->GetInt("media", "port");
+    std::string secret = m_config->GetString("media", "secret");
+    httplib::Client cli(ip, port);
     cli.set_connection_timeout(2, 0);
     char url[256];
-    snprintf(url, sizeof(url), "/index/api/resumeRtpCheck?secret=dDyYVky65wpSaEhr5kot1X9riUOA0MtN&stream_id=%s", streamId.c_str());
+    snprintf(url, sizeof(url), "/index/api/resumeRtpCheck?secret=%s&stream_id=%s", secret.c_str(), streamId.c_str());
     auto res = cli.Get(url);
     if (!res) {
         LOG_ERROR << "error code: " << res.error();
@@ -236,19 +243,10 @@ int GB28181Server::ResumeRtpCheck(const std::string& streamId)
     return code;
 }
 
-std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& realm)
+std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& id)
 {
-    m_streamSeq++;
-    if (m_streamSeq > 9999)
-        m_streamSeq = 1;
-
-    std::stringstream ss;
-    ss << std::setw(4) << std::setfill('0') << m_streamSeq;
-    //第1位为历史或者实时流,0为实时，1为历史
-    //第2-6位取监控域的4-8位
-    //第7-10位为不充分的媒体流标识，这里使用自增，每生成一个ssrc都自增
-    std::string ssrc = std::to_string((int)isHistory) + realm.substr(3, 5) + ss.str();
-    return ssrc;
+    //这里使用自增，每生成一个ssrc都自增
+    return gb28181::CreateSSRC(isHistory, id, m_streamSeq++);
 }
 
 int GB28181Server::CreateSN()
@@ -265,9 +263,9 @@ int GB28181Server::QueryCatalog(const MessageInfo& info)
     std::string xml = gb28181::BuildQueryCatalog(query);
 
     ClientInfo clientInfo;
-    clientInfo.sUser = info.deviceId;
-    clientInfo.sIp = info.ip;
-    clientInfo.iPort = info.port;
+    clientInfo.id = info.deviceId;
+    clientInfo.ip = info.ip;
+    clientInfo.port = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
 
     return query.SN;
@@ -282,9 +280,9 @@ int GB28181Server::QueryDeviceInfo(const MessageInfo& info)
     std::string xml = gb28181::BuildQuery(query);
 
     ClientInfo clientInfo;
-    clientInfo.sUser = info.deviceId;
-    clientInfo.sIp = info.ip;
-    clientInfo.iPort = info.port;
+    clientInfo.id = info.deviceId;
+    clientInfo.ip = info.ip;
+    clientInfo.port = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
 
     return query.SN;
@@ -293,9 +291,9 @@ int GB28181Server::QueryDeviceInfo(const MessageInfo& info)
 void GB28181Server::OnRegister(const ClientInfo& clientInfo)
 {
     MessageInfo info;
-    info.deviceId = clientInfo.sUser;
-    info.ip = clientInfo.sIp;
-    info.port = clientInfo.iPort;
+    info.deviceId = clientInfo.id;
+    info.ip = clientInfo.ip;
+    info.port = clientInfo.port;
     m_threadPool.enqueue([this, info]() {
         QueryCatalog(info);
         });
@@ -304,7 +302,7 @@ void GB28181Server::OnRegister(const ClientInfo& clientInfo)
 void GB28181Server::OnMessage(const ClientInfo& info, const std::string& message)
 {
     auto utf8Str = StringUtils::GB2312ToUTF8(message);
-    gb28181::Catalog catalog = gb28181::GetCatalog(utf8Str);
+    gb28181::ResponseCatalog catalog = gb28181::GetResponseCatalog(utf8Str);
     if (catalog.DeviceID.empty())
         return;
 
@@ -340,20 +338,19 @@ std::weak_ptr<GB28181Server> GB28181Server::GetWeakThis()
 
 bool GB28181Server::StartSipServer()
 {
-    std::string sipIp = m_config->GetString("sip_server", "ip");
-    int sipPort = m_config->GetInt("sip_server", "port");
-    std::string sipUser = m_config->GetString("sip_server", "user");
-    std::string sipPwd = m_config->GetString("sip_server", "pwd");
-    std::string sipDomain = m_config->GetString("sip_server", "domain");
-    std::string sipRealm = m_config->GetString("sip_server", "realm");
+    std::string sipIp = m_config->GetString("sip", "ip");
+    int sipPort = m_config->GetInt("sip", "port");
+    std::string sipId = m_config->GetString("sip", "id");
+    std::string sipPwd = m_config->GetString("sip", "password");
+    std::string sipDomain = m_config->GetString("sip", "domain");
 
     ServerInfo info;
-    info.sIp = sipIp;
-    info.iPort = sipPort;
-    info.sUser = sipUser;
-    info.sPwd = sipPwd;
-    info.sDomain = sipDomain;
-    info.sRealm = sipRealm;
+    info.ip = sipIp;
+    info.port = sipPort;
+    info.id = sipId;
+    info.password = sipPwd;
+    info.domain = sipDomain;
+    info.realm = sipDomain;
 
     if (!m_sipServer->Init(info))
         return false;
@@ -366,8 +363,8 @@ bool GB28181Server::StartSipServer()
 
 bool GB28181Server::StartHttpServer()
 {
-    std::string httpIp = m_config->GetString("http_server", "ip");
-    int httpPort = m_config->GetInt("http_server", "port");
+    std::string httpIp = m_config->GetString("http", "ip");
+    int httpPort = m_config->GetInt("http", "port");
     if (!m_httpServer->Init(GetWeakThis(), httpIp, httpPort))
         return false;
     return true;

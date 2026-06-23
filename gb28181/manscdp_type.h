@@ -5,7 +5,9 @@
 
 /*
 * 类型定义
-* 类型和成员的命名完全按照gb28181文档来
+* manscdp类型和字段名称完全按照gb28181文档来
+* 报文映射的类型和结构体都使用小驼峰命名法
+* 报文映射的字段名称都使用大驼峰命名法
 */
 
 namespace gb28181 {
@@ -152,6 +154,7 @@ const cmdType kKeepalive = "Keepalive";
 const cmdType kDeviceControl = "DeviceControl";
 // 报警通知
 const cmdType kAlarm = "Alarm";
+
 
 
 } // namespace gb28181

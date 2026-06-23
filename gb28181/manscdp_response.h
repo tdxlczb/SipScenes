@@ -15,7 +15,6 @@ struct ResponseDeviceControl :public ResponseBase
     // 执行结果标志
     resultType Result = kResultERROR;
 };
-using DeviceControl = ResponseDeviceControl;
 //==================== DeviceControl ====================
 
 
@@ -26,7 +25,6 @@ struct ResponseAlarm :public ResponseBase
     // 执行结果标志
     resultType Result = kResultERROR;
 };
-using Alarm = ResponseAlarm;
 //==================== Alarm ====================
 
 
@@ -41,7 +39,6 @@ struct ResponseCatalog : public ResponseBase
     // 执行结果标志
     resultType Result = kResultERROR;
 };
-using Catalog = ResponseCatalog;
 //==================== Catalog ====================
 
 
@@ -62,7 +59,6 @@ struct ResponseDeviceInfo : public ManscdpBase
     // 视频输入通道数(可选)
     int Channel = 0;
 };
-using DeviceInfo = ResponseDeviceInfo;
 //==================== DeviceInfo ====================
 
 
@@ -86,7 +82,6 @@ struct ResponseDeviceStatus : public ResponseBase
     dateTimeType dateTime;
     // 还有一些待补充
 };
-using DeviceStatus = ResponseDeviceStatus;
 //==================== DeviceStatus ====================
 
 
@@ -101,11 +96,11 @@ struct ResponseRecordInfo : public ResponseBase
     // 文件目录项列表
     std::vector<itemType> RecordList;
 };
-using RecordInfo = ResponseRecordInfo;
 //==================== RecordInfo ====================
 
 
-Catalog GetCatalog(const std::string& xml);
+ResponseCatalog GetResponseCatalog(const std::string& xml);
+
 
 } // namespace gb28181
 

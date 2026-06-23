@@ -26,7 +26,7 @@
  *
  * y字段为10位的十进制整数字符串，格式为dddddddddd，表示SSRC值。
  * 第1位为历史或实时媒体流的标识位，0为实时，1为历史；
- * 第2位至第6位取20位SIP监控域ID之中的4到8位，例如"34020000002000000001"中取"20000"； 
+ * 第2位至第6位取20位SIP监控域ID之中的4到8位，例如"34020000002000000001"中取"20000"；
  * 第7位至第10位作为域内媒体流标识，需要与当前域内产生的媒体流SSRC后4位不重复
  * 注意：某些厂家的实现为时效标识直接和SSRC的组合
  *  例如：y=0200000001
@@ -63,6 +63,15 @@ struct SdpParam
     int streamnumber = 0;
     std::string ssrc;
 };
+
+/**
+ * 创建媒体流SSRC
+ * @param isHistory : 是否为回放流
+ * @param id : 监控域id
+ * @param seq : 媒体流标识，只有4位数，不能大于9999
+ * @return 媒体流SSRC字符串
+ */
+std::string CreateSSRC(bool isHistory, const std::string& id, int seq);
 
 /**
  * 创建Invate请求中的sdp消息
