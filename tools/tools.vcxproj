@@ -138,7 +138,6 @@
     <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="file_utils.h" />
-    <ClInclude Include="httplib.h" />
     <ClInclude Include="http_digest.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="md5.h" />

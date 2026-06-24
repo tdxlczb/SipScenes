@@ -12,9 +12,7 @@ extern "C" {
 #include <eXosip2/eXosip.h>
 }
 
-#include "json/json.h"
 #include "tools/http_digest.h"
-#include "tools/httplib.h"
 #include "tools/log.h"
 
 namespace {

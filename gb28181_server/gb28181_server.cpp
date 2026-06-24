@@ -1,7 +1,6 @@
 #include "gb28181_server.h"
 #include <future>
-
-#include "json/json.h"
+#include "nlohmann/json.hpp"
 #include "http_server.h"
 #include "sip/sip_server.h"
 #include "tools/config.h"
@@ -13,6 +12,8 @@
 #include "gb28181/manscdp.h"
 #include "gb28181/stream.h"
 #include "gb28181/tools.h"
+
+using json = nlohmann::json;
 
 GB28181Server::GB28181Server()
     : m_config(std::make_shared<Config>())
@@ -165,16 +166,17 @@ int GB28181Server::OpenRtpServer(const std::string& streamId, int tcpMode)
         return -1;
     }
 
-    Json::Reader reader;
-    Json::Value root;
-    if (!reader.parse(res->body, root)) {
-        return -1;
+    try
+    {
+        json root = json::parse(res->body);
+        int code = root.value("code", -1);
+        rtpPort = root.value("port", -1);
+        if (code == 0 && rtpPort > 0) {
+            return rtpPort;
+        }
     }
-
-    int code = root.get("code", -1).asInt();
-    rtpPort = root.get("port", -1).asInt();
-    if (code == 0 && rtpPort > 0) {
-        return rtpPort;
+    catch (const std::exception& e)
+    {
     }
     return -1;
 }
@@ -201,14 +203,16 @@ int GB28181Server::PauseRtpCheck(const std::string& streamId)
         return -1;
     }
 
-    Json::Reader reader;
-    Json::Value root;
-    if (!reader.parse(res->body, root)) {
-        return -1;
+    try
+    {
+        json root = json::parse(res->body);
+        int code = root.value("code", -1);
+        return code;
     }
-
-    int code = root.get("code", -1).asInt();
-    return code;
+    catch (const std::exception& e)
+    {
+    }
+    return -1;
 }
 
 int GB28181Server::ResumeRtpCheck(const std::string& streamId)
@@ -233,20 +237,22 @@ int GB28181Server::ResumeRtpCheck(const std::string& streamId)
         return -1;
     }
 
-    Json::Reader reader;
-    Json::Value root;
-    if (!reader.parse(res->body, root)) {
-        return -1;
+    try
+    {
+        json root = json::parse(res->body);
+        int code = root.value("code", -1);
+        return code;
     }
-
-    int code = root.get("code", -1).asInt();
-    return code;
+    catch (const std::exception& e)
+    {
+    }
+    return -1;
 }
 
 std::string GB28181Server::CreateSSRC(bool isHistory, const std::string& id)
 {
     //这里使用自增，每生成一个ssrc都自增
-    return gb28181::CreateSSRC(isHistory, id, m_streamSeq++);
+    return gb28181::CreateSSRC(isHistory, id, ++m_streamSeq);
 }
 
 int GB28181Server::CreateSN()
