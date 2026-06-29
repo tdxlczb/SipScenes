@@ -1,6 +1,35 @@
 #include "tools.h"
+#include <atomic>
+#include <chrono>
 
 namespace gb28181 {
+
+//str转int
+bool str2int(const std::string& s, int& out)
+{
+    char* end = nullptr;
+    errno = 0;
+    long val = std::strtol(s.c_str(), &end, 10);
+
+    // 1. 空串 / 无数字
+    if (end == s.c_str()) return false;
+    // 2. 后缀非法字符
+    if (*end != '\0')       return false;
+    // 3. 越界（long 转 int）
+    if (errno == ERANGE || val < INT_MIN || val > INT_MAX) return false;
+
+    out = static_cast<int>(val);
+    return true;
+}
+
+// 线程安全、进程级单调递增
+int GetSN() {
+    static std::atomic<uint64_t> seq{ 0 };
+    // 毫秒时间戳取低 32 位 + 自增 24 位 → 最多 56 位，字符串长度 <= 17
+    uint64_t t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    uint64_t s = seq.fetch_add(1, std::memory_order_relaxed);
+    return (t & 0xFFFFFFFF) * 1000000 + (s & 0xFFFFFF);
+}
 
 //对象转换
 DeviceBase GetDeviceBase(const itemType& item)

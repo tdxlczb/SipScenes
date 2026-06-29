@@ -5,7 +5,12 @@
 
 namespace gb28181 {
 
-using NotifyBase = ManscdpBase;
+struct NotifyBase : public ManscdpBase
+{
+    NotifyBase() {
+        ManscdpType = kNotify;
+    };
+};
 
 //==================== Keepalive ====================
 //状态信息通知

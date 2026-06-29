@@ -6,7 +6,12 @@
 
 namespace gb28181 {
 
-using ResponseBase = ManscdpBase;
+struct ResponseBase : public ManscdpBase
+{
+    ResponseBase() {
+        ManscdpType = kResponse;
+    };
+};
 
 //==================== DeviceControl ====================
 // 设备控制应答

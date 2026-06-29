@@ -22,7 +22,12 @@ struct dragZoomType
     int LengthY = 0;
 };
 
-using ControlBase = ManscdpBase;
+struct ControlBase : public ManscdpBase
+{
+    ControlBase() {
+        ManscdpType = kControl;
+    };
+};
 
 //==================== DeviceControl ====================
 // 设备控制
@@ -44,8 +49,9 @@ struct ControlDeviceControl : public ControlBase
     dragZoomType DragZoomIn;
     // 拉框缩小控制命令(可选)
     dragZoomType DragZoomOut;
-
     // 还有其他控制命令，待补充
+
+    // 上述所有命令互斥，只能同时出现一种命令
 };
 //==================== DeviceControl ====================
 
@@ -73,6 +79,15 @@ struct ControlDeviceConfig : public ControlBase
 };
 //==================== DeviceConfig ====================
 
+
+std::string BuildPTZCmdControl(const ControlDeviceControl& manscdp);
+std::string BuildTeleBootControl(const ControlDeviceControl& manscdp);
+std::string BuildRecordCmdControl(const ControlDeviceControl& manscdp);
+std::string BuildGuardCmdControl(const ControlDeviceControl& manscdp);
+std::string BuildAlarmCmdControl(const ControlDeviceControl& manscdp);
+std::string BuildIFameCmdControl(const ControlDeviceControl& manscdp);
+std::string BuildDragZoomInControl(const ControlDeviceControl& manscdp);
+std::string BuildDragZoomOutControl(const ControlDeviceControl& manscdp);
 
 } // namespace gb28181
 

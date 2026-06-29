@@ -7,13 +7,18 @@ namespace gb28181 {
 
 struct ManscdpBase
 {
+    // 消息类型
+    manscdpType ManscdpType;
     // 命令类型
     cmdType CmdType;
     // 命令序列号, 默认为1
     SNType  SN = 1;
     // 目标设备的设备/区域、联网系统编码
     deviceIDType DeviceID;
+
 };
+
+ManscdpBase GetManscdpBase(const std::string& xml);
 
 } // namespace gb28181
 

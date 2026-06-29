@@ -34,81 +34,53 @@
 */
 
 #include "manscdp_response.h"
-#include <atomic>
-#include <chrono>
-#include "../3rd/tinyxml2/include/tinyxml2.h"
+#include "pugixml/pugixml.hpp"
 
 namespace gb28181 {
 
-//str转int
-bool str2int(const std::string& s, int& out)
-{
-    char* end = nullptr;
-    errno = 0;
-    long val = std::strtol(s.c_str(), &end, 10);
 
-    // 1. 空串 / 无数字
-    if (end == s.c_str()) return false;
-    // 2. 后缀非法字符
-    if (*end != '\0')       return false;
-    // 3. 越界（long 转 int）
-    if (errno == ERANGE || val < INT_MIN || val > INT_MAX) return false;
-
-    out = static_cast<int>(val);
-    return true;
-}
-
-// 线程安全、进程级单调递增
-int GetSN() {
-    static std::atomic<uint64_t> seq{ 0 };
-    // 毫秒时间戳取低 32 位 + 自增 24 位 → 最多 56 位，字符串长度 <= 17
-    uint64_t t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    uint64_t s = seq.fetch_add(1, std::memory_order_relaxed);
-    return (t & 0xFFFFFFFF) * 1000000 + (s & 0xFFFFFF);
-}
-
-static std::string GetChildTextString(tinyxml2::XMLElement* elmt, const std::string& name, const std::string& defaultValue = "")
-{
-    tinyxml2::XMLElement* childElmt = elmt->FirstChildElement(name.c_str());
-    if (childElmt) {
-        return std::string(childElmt->GetText());
-    }
-    return defaultValue;
-}
-
-static int GetChildTextInt(tinyxml2::XMLElement* elmt, const std::string& name, int defaultValue = 0)
-{
-    tinyxml2::XMLElement* childElmt = elmt->FirstChildElement(name.c_str());
-    if (childElmt) {
-        int result = 0;
-        if (str2int(childElmt->GetText(), result))
-            return result;
-    }
-    return defaultValue;
-}
-
-static itemType GetItem(tinyxml2::XMLElement* elmt)
+static itemType GetItem(pugi::xml_node itemNode)
 {
     itemType item;
-    if (!elmt)
+    if (itemNode.empty())
         return item;
-    item.DeviceID = GetChildTextString(elmt, "DeviceID");
-    item.Name = GetChildTextString(elmt, "Name");
-    item.Manufacturer = GetChildTextString(elmt, "Manufacturer");
-    item.Model = GetChildTextString(elmt, "Model");
-    item.Owner = GetChildTextString(elmt, "Owner");
-    item.CivilCode = GetChildTextString(elmt, "CivilCode");
-    item.Address = GetChildTextString(elmt, "Address");
-    item.Parental = GetChildTextInt(elmt, "Parental");
-    item.ParentID = GetChildTextString(elmt, "ParentID");
-    item.SafetyWay = GetChildTextInt(elmt, "SafetyWay");
-    item.RegisterWay = GetChildTextInt(elmt, "RegisterWay");
-    item.Secrecy = GetChildTextInt(elmt, "Secrecy");
-    item.IPAddress = GetChildTextString(elmt, "IPAddress");
-    item.Port = GetChildTextInt(elmt, "Port");
-    std::string statusStr = GetChildTextString(elmt, "Status");
-    if (statusStr == "ON") {
-        item.Status = kStatusON;
+    item.DeviceID = itemNode.child("DeviceID").text().as_string();
+    item.Name = itemNode.child("Name").text().as_string();
+    item.Manufacturer = itemNode.child("Manufacturer").text().as_string();
+    item.Model = itemNode.child("Model").text().as_string();
+    item.Owner = itemNode.child("Owner").text().as_string();
+    item.CivilCode = itemNode.child("CivilCode").text().as_string();
+    item.Block = itemNode.child("Block").text().as_string();
+    item.Address = itemNode.child("Address").text().as_string();
+    item.Parental = itemNode.child("Parental").text().as_int();
+    item.ParentID = itemNode.child("ParentID").text().as_string();
+    item.SafetyWay = itemNode.child("SafetyWay").text().as_int();
+    item.RegisterWay = itemNode.child("RegisterWay").text().as_int(1);
+    item.CertNum = itemNode.child("CertNum").text().as_string();
+    item.Certifiable = itemNode.child("Certifiable").text().as_int();
+    item.ErrCode = itemNode.child("ErrCode").text().as_int();
+    item.EndTime = itemNode.child("EndTime").text().as_string();
+    item.Secrecy = itemNode.child("Secrecy").text().as_int();
+    item.IPAddress = itemNode.child("IPAddress").text().as_string();
+    item.Port = itemNode.child("Port").text().as_int();
+    item.Password = itemNode.child("Password").text().as_string();
+    item.Status = itemNode.child("Status").text().as_string();
+    item.Longitude = itemNode.child("Longitude").text().as_double();
+    item.Latitude = itemNode.child("Latitude").text().as_double();
+    // 检测是否存在 <Info> 子节点
+    pugi::xml_node infoNode = itemNode.child("Info");
+    if (infoNode) {
+        item.PTZType = infoNode.child("PTZType").text().as_int();
+        item.PositionType = infoNode.child("PositionType").text().as_int();
+        item.RoomType = infoNode.child("RoomType").text().as_int(1);
+        item.UseType = infoNode.child("UseType").text().as_int();
+        item.SupplyLightType = infoNode.child("SupplyLightType").text().as_int(1);
+        item.DirectionType = infoNode.child("DirectionType").text().as_int();
+        item.Resolution = infoNode.child("Resolution").text().as_string();
+        item.BusinessGroupID = infoNode.child("BusinessGroupID").text().as_string();
+        item.DownloadSpeed = infoNode.child("DownloadSpeed").text().as_string();
+        item.SVCSpaceSupportMode = infoNode.child("SVCSpaceSupportMode").text().as_int();
+        item.SVCTimeSupportMode = infoNode.child("SVCTimeSupportMode").text().as_int();
     }
     return item;
 }
@@ -116,35 +88,46 @@ static itemType GetItem(tinyxml2::XMLElement* elmt)
 ResponseCatalog GetResponseCatalog(const std::string& xml)
 {
     ResponseCatalog rsp;
-    tinyxml2::XMLDocument docXml;
-    tinyxml2::XMLError errXml = docXml.Parse(xml.c_str());
-    if (tinyxml2::XML_SUCCESS != errXml)
-        return rsp;
+    try {
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_string(xml.c_str(), pugi::parse_default);
+        if (!result) {
+            return rsp;
+        }
+        pugi::xml_node root = doc.child(std::data(kResponse));
+        if (!root) {
+            return rsp;
+        }
+        rsp.CmdType = root.child("CmdType").text().as_string();
+        if (rsp.CmdType != kCatalog)
+            return rsp;
 
-    tinyxml2::XMLElement* elmtRoot = docXml.RootElement();
-    if (!elmtRoot)
-        return rsp;
-    const char* rootName = elmtRoot->Name();
-    if (!rootName)
-        return rsp;
-    if (std::string(rootName) != kResponse)
-        return rsp;
+        rsp.SN = root.child("SN").text().as_int();
+        rsp.DeviceID = root.child("DeviceID").text().as_string();
+        rsp.SumNum = root.child("SumNum").text().as_int();
 
-    rsp.CmdType = GetChildTextString(elmtRoot, "CmdType");
-    if (rsp.CmdType != kCatalog)
-        return rsp;
-
-    rsp.SN = GetChildTextInt(elmtRoot, "SN");
-    rsp.DeviceID = GetChildTextString(elmtRoot, "DeviceID");
-    rsp.SumNum = GetChildTextInt(elmtRoot, "SumNum");
-
-    tinyxml2::XMLElement* DeviceList = elmtRoot->FirstChildElement("DeviceList");
-    if (DeviceList) {
-        for (auto elmt = DeviceList->FirstChildElement("Item"); elmt != nullptr; elmt = elmt->NextSiblingElement("Item"))
-        {
-            itemType item = GetItem(elmt);
+        pugi::xml_node deviceList = root.child("DeviceList");
+        if (!deviceList) {
+            return rsp;
+        }
+        int listNum = deviceList.attribute("Num").as_int();
+        for (pugi::xml_node itemNode : deviceList.children("Item")) {
+            itemType item = GetItem(itemNode);
             rsp.DeviceList.push_back(item);
         }
+        return rsp;
+    } catch (const std::bad_alloc& e) {
+        // 【安全策略4】捕获内存不足异常
+        //std::cerr << "致命错误：内存不足，无法分配 XML 解析所需内存 (已捕获，不崩溃)。" << std::endl;
+        //return -2;
+    } catch (const std::exception& e) {
+        // 捕获所有其他标准异常（比如文件流异常等）
+        //std::cerr << "发生未知标准异常 (已捕获): " << e.what() << std::endl;
+        //return -3;
+    } catch (...) {
+        // 兜底：捕获任何非标准的异常（极少发生）
+        //std::cerr << "发生未知非标准异常 (已捕获，程序不崩溃)。" << std::endl;
+        //return -4;
     }
     return rsp;
 }

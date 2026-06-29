@@ -5,7 +5,12 @@
 
 namespace gb28181 {
 
-using QueryBase = ManscdpBase;
+struct QueryBase : public ManscdpBase
+{
+    QueryBase() {
+        ManscdpType = kQuery;
+    };
+};
 
 //==================== DeviceStatus ====================
 // 设备状态查询请求

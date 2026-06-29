@@ -28,7 +28,7 @@ struct DeviceBase
     // 行政区域
     std::string civilCode;
 
-    // 设备地址
+    // 设备地址，这个地址是当前为子设备信息时，当前子设备的ip地址，例如记录通道信息时，该字段为通道对应设备ip，而不是当前连接的设备ip
     std::string address;
 
     // 是否有子设备
@@ -46,7 +46,7 @@ struct DeviceBase
     // 保密属性
     int secrecy = 0;
 
-    // 设备ip地址
+    // 设备ip地址，表示当前连接的设备ip
     std::string ip;
 
     // 设备端口

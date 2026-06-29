@@ -19,27 +19,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\3rd\tinyxml2\include\tinyxml2.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="device_channel.cpp" />
     <ClCompile Include="manscdp.cpp" />
     <ClCompile Include="manscdp_base.cpp" />
     <ClCompile Include="manscdp_control.cpp" />
+    <ClCompile Include="manscdp_control_type.cpp" />
     <ClCompile Include="manscdp_notify.cpp" />
     <ClCompile Include="manscdp_query.cpp" />
     <ClCompile Include="manscdp_response.cpp" />
+    <ClCompile Include="manscdp_type.cpp" />
     <ClCompile Include="sdp.cpp" />
     <ClCompile Include="stream.cpp" />
     <ClCompile Include="tools.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\3rd\tinyxml2\include\tinyxml2.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="device_base.h" />
     <ClInclude Include="device_channel.h" />
     <ClInclude Include="manscdp.h" />
     <ClInclude Include="manscdp_base.h" />
     <ClInclude Include="manscdp_control.h" />
+    <ClInclude Include="manscdp_control_type.h" />
     <ClInclude Include="manscdp_notify.h" />
     <ClInclude Include="manscdp_query.h" />
     <ClInclude Include="manscdp_response.h" />
@@ -47,6 +48,11 @@
     <ClInclude Include="sdp.h" />
     <ClInclude Include="stream.h" />
     <ClInclude Include="tools.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\lib3rd\lib3rd.vcxproj">
+      <Project>{a5b2a740-1f02-4fc8-bcfd-33b724c8ba30}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -146,7 +152,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>./include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../3rd/source-compile;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
     </ClCompile>
