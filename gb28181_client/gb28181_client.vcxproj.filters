@@ -15,54 +15,45 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="http_digest.cpp">
+    <ClCompile Include="gb28181_client.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="md5.cpp">
+    <ClCompile Include="device.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="config.cpp">
+    <ClCompile Include="gb28181_header_maker.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="file_utils.cpp">
+    <ClCompile Include="h264_parser.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="time_utils.cpp">
+    <ClCompile Include="load_h264.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="log.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="thread_pool.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="string_utils.cpp">
+    <ClCompile Include="net_client.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="http_digest.h">
+    <ClInclude Include="bits.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="log.h">
+    <ClInclude Include="device.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="md5.h">
+    <ClInclude Include="gb28181_header_maker.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="config.h">
+    <ClInclude Include="h264_parser.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="file_utils.h">
+    <ClInclude Include="load_h264.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="time_utils.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="thread_pool.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="string_utils.h">
+    <ClInclude Include="nalu.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

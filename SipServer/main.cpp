@@ -1,4 +1,4 @@
-﻿// SIPServer.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+// SIPServer.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 #include <winsock2.h>
 
@@ -22,7 +22,7 @@ int main()
     ServerInfo serverInfo{
             "SipServer_Test",//服务器的名字
             "1234567890123456",//SIP服务随机字符串
-            "172.16.19.108",//SIP服务IP
+            "172.16.19.256",//SIP服务IP
             5060,//SIP服务端口
             "34020000002000000001",//SIP服务器ID
             "3402000000",//SIP服务器域
@@ -39,7 +39,7 @@ int main()
         while (true)
         {
             ClientInfo info{
-                "172.16.19.184",
+                "172.16.19.196",
                 5060,
                 "34020000001320000002",
                 false,
@@ -81,7 +81,7 @@ int main()
 
 struct eXosip_t* context_eXosip;
 
-int main2(int argc, char* argv[])
+int main02(int argc, char* argv[])
 {
     eXosip_event_t* je = NULL;
     osip_message_t* ack = NULL;
@@ -258,7 +258,7 @@ static void make_nonce(char* nonce, int len)
     snprintf(nonce, len, "%ld", (long)time(NULL));
 }
 
-int main3(void)
+int main03(void)
 {
     eXosip_t* ctx;
     eXosip_event_t* evt;
