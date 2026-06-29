@@ -7,8 +7,13 @@
 
 #include "gb28181/manscdp.h"
 
+
+#include <Windows.h>
 int main()
 {
+    //SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
+
     auto server = std::make_shared<GB28181Server>();
     server->Start();
 

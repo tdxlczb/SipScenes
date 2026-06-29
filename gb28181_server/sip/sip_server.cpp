@@ -23,6 +23,40 @@ static void make_nonce(char* nonce, int len)
     snprintf(nonce, len, "%ld", (long)time(NULL));
 }
 
+static void DumpMessage(osip_message_t* pSipMsg)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipMsg, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\n==========print message start\n%s\n==========print message end\n", pMsg);
+    }
+    osip_free(pMsg);
+}
+
+static void DumpRequest(eXosip_event_t* pSipEvt)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipEvt->request, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\n==========print request start\ntype=%d\n%s\n==========print request end\n", pSipEvt->type, pMsg);
+    }
+    osip_free(pMsg);
+}
+
+static void DumpResponse(eXosip_event_t* pSipEvt)
+{
+    char* pMsg;
+    size_t szLen;
+    osip_message_to_str(pSipEvt->response, &pMsg, &szLen);
+    if (pMsg) {
+        LOGI("\n==========print response start\ntype=%d\n%s\n==========print response end\n", pSipEvt->type, pMsg);
+    }
+    osip_free(pMsg);
+}
+
+
 }
 
 SipServer::SipServer()
@@ -158,8 +192,8 @@ int SipServer::RequestInfo(const std::string& callUid, const std::string& body)
 void SipServer::EventHandle(eXosip_event_t* pSipEvt)
 {
     //LOGI("received type:%d", pSipEvt->type);
-    this->DumpRequest(pSipEvt);
-    this->DumpResponse(pSipEvt);
+    DumpRequest(pSipEvt);
+    DumpResponse(pSipEvt);
 
     switch (pSipEvt->type)
     {
@@ -468,39 +502,6 @@ void SipServer::EventHandle(eXosip_event_t* pSipEvt)
     }
 }
 
-void SipServer::DumpMessage(osip_message_t* pSipMsg)
-{
-    char* pMsg;
-    size_t szLen;
-    osip_message_to_str(pSipMsg, &pMsg, &szLen);
-    if (pMsg) {
-        LOGI("\n==========print message start\n%s\n==========print message end\n", pMsg);
-    }
-    osip_free(pMsg);
-}
-
-void SipServer::DumpRequest(eXosip_event_t* pSipEvt)
-{
-    char* pMsg;
-    size_t szLen;
-    osip_message_to_str(pSipEvt->request, &pMsg, &szLen);
-    if (pMsg) {
-        LOGI("\n==========print request start\ntype=%d\n%s\n==========print request end\n", pSipEvt->type, pMsg);
-    }
-    osip_free(pMsg);
-}
-
-void SipServer::DumpResponse(eXosip_event_t* pSipEvt)
-{
-    char* pMsg;
-    size_t szLen;
-    osip_message_to_str(pSipEvt->response, &pMsg, &szLen);
-    if (pMsg) {
-        LOGI("\n==========print response start\ntype=%d\n%s\n==========print response end\n", pSipEvt->type, pMsg);
-    }
-    osip_free(pMsg);
-}
-
 void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
 {
     osip_authorization_t* pAuth = nullptr;
@@ -544,9 +545,12 @@ void SipServer::Response_REGISTER(eXosip_event_t* pSipEvt)
 
     ClientInfo clientInfo;
     clientInfo.id = username;
-    clientInfo.ip = pContact->url->host;
-    clientInfo.port = atoi(pContact->url->port);
-
+    if (pContact && pContact->url) {
+        clientInfo.ip = pContact->url->host;
+    }
+    if (pContact && pContact->url) {
+        clientInfo.port = atoi(pContact->url->port);
+    }
     //hash验证，验证交互信息一致性
     if (response && 0 == memcmp(hashResponse, response, HASHHEXLEN)) {//一致则注册/注销此用户
         int iExpires = -1;

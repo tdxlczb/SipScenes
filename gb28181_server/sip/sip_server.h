@@ -1,12 +1,13 @@
 #pragma once
-extern "C" {
-//#include <osip2/osip_mt.h>
-#include <eXosip2/eXosip.h>
-}
 
 #include <map>
 #include "sip_define.h"
 #include "sip_event.h"
+
+extern "C" {
+    //#include <osip2/osip_mt.h>
+#include <eXosip2/eXosip.h>
+}
 
 class SipServer
 {
@@ -36,13 +37,6 @@ public:
     /// <param name="pSipEvt">Sip事件</param>
     void EventHandle(eXosip_event_t* pSipEvt);
     /// <summary>
-    /// 格式化打印消息
-    /// </summary>
-    /// <param name="pSipMsg">Sip消息</param>
-    void DumpMessage(osip_message_t* pSipMsg);
-    void DumpRequest(eXosip_event_t* pSipEvt);
-    void DumpResponse(eXosip_event_t* pSipEvt);
-    /// <summary>
     /// 请求处理：sip_method = REGISTER
     /// </summary>
     /// <param name="pSipEvt">Sip事件</param>
@@ -70,10 +64,13 @@ public:
     /// <param name="pSipEvt">Sip事件</param>
     /// <param name="iStatus">响应码</param>
     void MessageSendAnswer(eXosip_event_t* pSipEvt, int iStatus);
-    /// <summary>
-    /// 发送请求：INVITE
-    /// </summary>
-    /// <param name="clientInfo">发送的目的对象</param>
+    /**
+     * @brief 发送请求：INVITE
+     * @param clientInfo 发送目标信息
+     * @param options 发送请求额外信息
+     * @return 成功返回 0，失败返回 -1
+     * @note 
+     */
     int Request_INVITE(const ClientInfo& clientInfo, const InviteOptions& options);
     /// <summary>
     /// 发送请求：BYE
@@ -81,10 +78,13 @@ public:
     /// <param name="clientInfo">发送的目的对象</param>
     int Request_BYE(int cid, int did);
     int Request_BYE(const ClientInfo& clientInfo);
-    /// <summary>
-    /// 发送请求：MESSAGE
-    /// </summary>
-    /// <param name="clientInfo">发送的目的对象</param>
+    /**
+     * @brief 发送请求：MESSAGE
+     * @param clientInfo 发送目标信息
+     * @param body 发送请求额外信息
+     * @return 成功返回 0，失败返回 -1
+     * @note
+     */
     int Request_MESSAGE(const ClientInfo& clientInfo, const std::string& body);
     /// <summary>
     /// 发送请求：NOTIFY
@@ -97,7 +97,7 @@ public:
     /// <param name="DialogInfo">发送的目的对象</param>
     int Request_INFO(const DialogInfo& dlgInfo, const std::string& body);
 private:
-    const std::string kUserAgent = "GB28181-Server";
+    const std::string kUserAgent = "OpenGB28181";
     const int kTimeout = 1800;
     const int kExpiry = 3600;
 

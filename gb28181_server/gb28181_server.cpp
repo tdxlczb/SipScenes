@@ -114,6 +114,11 @@ int GB28181Server::ControlStream(const StreamInfo& info)
     return m_sipServer->RequestInfo(streamId, body);
 }
 
+int GB28181Server::DeviceControl(const ControlInfo& info)
+{
+    return ControlDeviceControl(info);
+}
+
 DeviceList GB28181Server::GetDeviceList(const MessageInfo& info)
 {
     if (info.update) {
@@ -260,6 +265,89 @@ int GB28181Server::CreateSN()
     return ++m_messageSn;
 }
 
+int GB28181Server::ControlDeviceConfig(const MessageInfo& info)
+{
+    return 0;
+}
+
+int GB28181Server::ControlDeviceControl(const ControlInfo& info)
+{
+    gb28181::ControlDeviceControl control;
+    control.CmdType = gb28181::kDeviceControl;
+    control.SN = CreateSN();
+    control.DeviceID = info.deviceId;
+
+    switch (info.controlType)
+    {
+    case PTZ_CTRL_HALT:
+        break;
+    case PTZ_CTRL_RIGHT:     // 右
+        control.PTZCmd.leftRight = 1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_RIGHTUP:   // 右上
+        control.PTZCmd.leftRight = 1;
+        control.PTZCmd.upDown = -1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_UP:        // 上
+        control.PTZCmd.upDown = -1;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_LEFTUP:    // 左上
+        control.PTZCmd.leftRight = -1;
+        control.PTZCmd.upDown = -1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_LEFT:      // 左
+        control.PTZCmd.leftRight = -1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_LEFTDOWN:  // 左下
+        control.PTZCmd.leftRight = -1;
+        control.PTZCmd.upDown = 1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_DOWN:      // 下
+        control.PTZCmd.upDown = 1;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_RIGHTDOWN: // 右下
+        control.PTZCmd.leftRight = 1;
+        control.PTZCmd.upDown = 1;
+        control.PTZCmd.horSpeed = info.controlValue * 255 / 100;
+        control.PTZCmd.verSpeed = info.controlValue * 255 / 100;
+        break;
+    case PTZ_CTRL_ZOOM:
+        if (info.controlValue > 0) {
+            control.PTZCmd.inOut = 1;
+            control.PTZCmd.zoomSpeed = info.controlValue * 15 / 100;
+        } else if (info.controlValue < 0) {
+            control.PTZCmd.inOut = -1;
+            control.PTZCmd.zoomSpeed = -info.controlValue * 15 / 100;
+        }
+        break;
+    case PTZ_CTRL_IRIS:
+        break;
+    case PTZ_CTRL_FOCUS:
+        break;
+    default:
+        break;
+    }
+
+    std::string xml = gb28181::BuildPTZCmdControl(control);
+
+    ClientInfo clientInfo;
+    clientInfo.id = info.deviceId;
+    clientInfo.ip = info.ip;
+    clientInfo.port = info.port;
+    m_sipServer->RequestMessage(clientInfo, xml);
+    return 0;
+}
+
 int GB28181Server::QueryCatalog(const MessageInfo& info)
 {
     gb28181::QueryCatalog query;
@@ -273,7 +361,6 @@ int GB28181Server::QueryCatalog(const MessageInfo& info)
     clientInfo.ip = info.ip;
     clientInfo.port = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
-
     return query.SN;
 }
 
@@ -290,9 +377,34 @@ int GB28181Server::QueryDeviceInfo(const MessageInfo& info)
     clientInfo.ip = info.ip;
     clientInfo.port = info.port;
     m_sipServer->RequestMessage(clientInfo, xml);
-
     return query.SN;
 }
+
+
+void GB28181Server::OnResponseCatalog(const ClientInfo& info, const std::string& message)
+{
+    gb28181::ResponseCatalog catalog = gb28181::GetResponseCatalog(message);
+    if (catalog.DeviceID.empty())
+        return;
+
+    gb28181::Device newDevice = gb28181::GetDevice(catalog);
+    if (m_deviceList.find(newDevice.deviceId) == m_deviceList.end()) {
+        m_deviceList.emplace(newDevice.deviceId, newDevice);
+        return;
+    }
+    auto deviceChannels = m_deviceList.at(newDevice.deviceId).channels;
+    for (auto iter = newDevice.channels.begin(); iter != newDevice.channels.end(); ++iter)
+    {
+        if (deviceChannels.find(iter->first) != deviceChannels.end()) {
+            //替换更新channel数据
+            deviceChannels[iter->first] = iter->second;
+        } else {
+            deviceChannels.emplace(iter->first, iter->second);
+        }
+    }
+    m_deviceList.at(newDevice.deviceId).channels = deviceChannels;
+}
+
 
 void GB28181Server::OnRegister(const ClientInfo& clientInfo)
 {
@@ -308,28 +420,19 @@ void GB28181Server::OnRegister(const ClientInfo& clientInfo)
 void GB28181Server::OnMessage(const ClientInfo& info, const std::string& message)
 {
     auto utf8Str = StringUtils::GB2312ToUTF8(message);
-    gb28181::ResponseCatalog catalog = gb28181::GetResponseCatalog(utf8Str);
-    if (catalog.DeviceID.empty())
+
+    gb28181::ManscdpBase manscdp = gb28181::GetManscdpBase(utf8Str);
+    if (manscdp.ManscdpType.empty() || manscdp.CmdType.empty())
         return;
 
-    gb28181::Device newDevice = gb28181::GetDevice(catalog);
-    if (m_deviceList.find(newDevice.deviceId) == m_deviceList.end()) {
-        m_deviceList.emplace(newDevice.deviceId, newDevice);
-        return;
+    if (manscdp.ManscdpType == gb28181::kResponse && manscdp.CmdType == gb28181::kCatalog) {
+        OnResponseCatalog(info,utf8Str);
+    } else if (manscdp.ManscdpType == gb28181::kResponse && manscdp.CmdType == gb28181::kDeviceConfig) {
+        //OnResponseDeviceConfig(info, utf8Str);
     }
-    auto deviceChannels = m_deviceList.at(newDevice.deviceId).channels;
-    for (auto iter = newDevice.channels.begin(); iter != newDevice.channels.end(); ++iter)
-    {
-        if (deviceChannels.find(iter->first) != deviceChannels.end()) {
-            //替换更新channel数据
-            deviceChannels[iter->first] = iter->second;
-        }
-        else {
-            deviceChannels.emplace(iter->first, iter->second);
-        }
-    }
-    m_deviceList.at(newDevice.deviceId).channels = deviceChannels;
+
 }
+
 
 std::shared_ptr<GB28181Server> GB28181Server::GetSharedThis()
 {

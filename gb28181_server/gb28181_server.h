@@ -24,6 +24,7 @@ public:
     int OpenStream(const StreamInfo& info);
     int CloseStream(const StreamInfo& info);
     int ControlStream(const StreamInfo& info);
+    int DeviceControl(const ControlInfo& info);
 
     DeviceList GetDeviceList(const MessageInfo& info);
 
@@ -35,13 +36,20 @@ private:
     int ResumeRtpCheck(const std::string& streamId);
     std::string CreateSSRC(bool isHistory, const std::string& id);
     int CreateSN();
+
+    int ControlDeviceConfig(const MessageInfo& info);
+    int ControlDeviceControl(const ControlInfo& info);
     // 返回sn号
     int QueryCatalog(const MessageInfo& info);
     int QueryDeviceInfo(const MessageInfo& info);
 
+    void OnResponseCatalog(const ClientInfo& info, const std::string& message);
+
+
 private:
     virtual void OnRegister(const ClientInfo& info) override;
     virtual void OnMessage(const ClientInfo& info, const std::string& message) override;
+
 private:
     std::shared_ptr<GB28181Server> GetSharedThis();
     std::weak_ptr<GB28181Server> GetWeakThis();

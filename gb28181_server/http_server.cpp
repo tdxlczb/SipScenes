@@ -219,6 +219,22 @@ bool HttpServer::Init(std::weak_ptr<GB28181Server> gbServer, const std::string& 
 
         });
 
+    m_server.Post("/deviceControl", [this](const httplib::Request& req, httplib::Response& res) {
+        ControlInfo info = GetControlInfo(req.body);
+        std::shared_ptr<GB28181Server> shared = m_gbServer.lock();
+        int ret = -1;
+        json deviceListValue = json::array();
+        if (shared) {
+            ret = shared->DeviceControl(info);
+        }
+
+        HttpResponse resp;
+        resp.code = ret;
+        std::string content = resp.ToJson();
+        res.set_content(content, "application/json; charset=utf-8");
+
+        });
+
     m_server.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         const char* fmt = "<p>Error Status: <span style='color:red;'>%d</span></p>";
         char buf[BUFSIZ];
@@ -284,6 +300,25 @@ MessageInfo HttpServer::GetMessageInfo(const std::string& body)
         info.update = root.value("update", false);
     }
     catch (const std::exception& e)
+    {
+
+    }
+    return info;
+}
+
+ControlInfo HttpServer::GetControlInfo(const std::string& body)
+{
+    ControlInfo info;
+    try
+    {
+        json root = json::parse(body);
+        info.deviceId = root.value("deviceId", "");
+        info.ip = root.value("ip", "");
+        info.port = root.value("port", 0);
+        info.controlType = (PTZControlType)root.value("controlType", 0);
+        info.controlValue = root.value("controlValue", 0);
+        return info;
+    } catch (const std::exception& e)
     {
 
     }

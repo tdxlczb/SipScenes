@@ -17,6 +17,7 @@ public:
 
     StreamInfo GetStreamInfo(const std::string& body);
     MessageInfo GetMessageInfo(const std::string& body);
+    ControlInfo GetControlInfo(const std::string& body);
 
 private:
     httplib::Server m_server;
